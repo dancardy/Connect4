@@ -204,9 +204,9 @@ module Connect4BoardUI {
     function resizeCanvasAccordingToParentSize(aspectRatio: number): void {
         var winWidth: number = divCanvas.clientWidth;
         var winHeight: number = Math.floor(getWindowHeight() * 0.95); //set initial height to viewport
-        if (divCanvas.style.height.length > 0) {
-            //if height is set by __inline__ CSS, let that height control instead of the window's height
-            //Note: this only makes sense where the inline CSS specifies an absolute height (eg. 500px), not a relative height.
+        
+        if (divCanvas.className == "c4-fixed-height") {
+            //if height is set by the c4-fixed-height class, let that height control instead of the window's height
             winHeight = divCanvas.clientHeight;
         }
                 
