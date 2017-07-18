@@ -34,17 +34,17 @@ module Connect4BoardUI {
     
     //Gameplay controls
     var AI_Player: number = 1; //0 is first player, 1 is second player.
-    var AI_Player_Wait: number = 5000; //five seconds.
+    var AI_Player_Max_Wait: number = 10000;
 
     //html Controls
-    var pauseBtn: HTMLButtonElement;
+    var newGameBtn: HTMLButtonElement;
     var widthSlider: HTMLInputElement;
     var heightSlider: HTMLInputElement;
 
     export function init(): void {
         debugSpan = <HTMLSpanElement>document.querySelector("#debugspan");
-        pauseBtn = <HTMLButtonElement>document.querySelector("#pauseBtn");
-        pauseBtn.addEventListener('click', pauseBtnPressed);
+        newGameBtn = <HTMLButtonElement>document.querySelector("#NewGameBtn");
+        newGameBtn.addEventListener('click', newGameBtnPressed);
 
         //above is temporary, below should be kept.
 
@@ -70,7 +70,7 @@ module Connect4BoardUI {
         Connect4Board.numCols = parseInt(document.getElementById("widthValue").innerHTML);
         Connect4Board.threshold = 4;
         AI_Player = 1;
-        MCTS.maxNodes = 300000;//300000;//300k max
+        MCTS.maxNodes = 300000;//300000;//300000;//300k max
         //500 is easy
         //1000 is medium (you beat it)
         //50000 is hard
@@ -81,7 +81,6 @@ module Connect4BoardUI {
         //need to remember if player wait should wait for nodes (doesn't make sense since will run out of nodes at end of game'), or just time;
         //should wait less time if are already at max nodes
         //review nodes and timing more.
-
 
         board = new Connect4Board();
         MCTS.start(board);
@@ -103,23 +102,10 @@ module Connect4BoardUI {
         initBoard();
     }
 
-    //since dropping a piece resumes, the button label is not currently kept up-to-date at all times. (fine because not sure if will be in final controls);
-    function pauseBtnPressed():void {
-        switch (MCTS.simulationState) {
-            case MCTS.States.Paused:
-                pauseBtn.innerText = "Pause";
-                MCTS.resume();
-                break;
-            case MCTS.States.Running:
-                pauseBtn.innerText = "Resume";
-                MCTS.pause();
-                break;
-            case MCTS.States.Stopped:
-                pauseBtn.innerText = "-----";
-                break;
-        }
-        
-        //playAIMove();
+
+    function newGameBtnPressed():void {
+        MCTS.stop();
+        initBoard();
     }
 
     //resizes the canvas so it fits in the window vertically and within its parent div horizontally, maintianing aspectRatio
@@ -237,32 +223,42 @@ module Connect4BoardUI {
         }
     }
 
-    //if there is no delay, it will crash because rootNode becomes undefined<<< go back and add appropriate error checking.!
-    var playAIMoveCalledBefore: boolean = false;
-    //var countdown: number;
+    var thinkingIndicated : boolean = false;
+    var cutofftime : number;
     function playAIMove(): void {
         //if player asks the computer to play for it
         if ((board.gameState == GameStates.Player2sTurn && AI_Player == 0) || (board.gameState == GameStates.Player1sTurn && AI_Player == 1)) {
-            makeMove(MCTS.getRecommendedMove());
+            var move = MCTS.getRecommendedMove()
+            if (move != null) {
+                makeMove(move);
+            } else {
+                console.log("when player asked computer to play for it, move could not be processed because MCTS could not recommend a move");
+            }
             return;
         }
         
-        if (playAIMoveCalledBefore == false) {
-            playAIMoveCalledBefore = true;
-            if (AI_Player_Wait > 2000) {
+        if (MCTS.simulationState == MCTS.States.Running) {
+            if (!thinkingIndicated) {
                 ctx.save();
                 translateCanvas();
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.font = 'bold 40pt Calibri';
+                ctx.font = 'bold 30pt Calibri';
                 ctx.fillStyle = "#777777"
                 ctx.clearRect(-(canvas.width - boardWidth) / 2, -holeSpacing, Connect4Board.numCols * holeSpacing / scalePct, holeSpacing - 1); //clear area above board
                 ctx.fillText("Thinking", canvas.width / 2, -holeSpacing / 2);
                 ctx.restore();
+                thinkingIndicated = true;
+                cutofftime = Date.now() + AI_Player_Max_Wait;
             }
-            setTimeout(playAIMove, AI_Player_Wait);
-        } else {
-            playAIMoveCalledBefore = false;
+            if (Date.now() < cutofftime) {
+                setTimeout(playAIMove, 250);
+            } else {
+                thinkingIndicated = false;
+                makeMove(MCTS.getRecommendedMove());
+            }
+        } else { //MCTS paused itself.
+            thinkingIndicated = false;
             makeMove(MCTS.getRecommendedMove());
         }
     }
@@ -335,7 +331,7 @@ module Connect4BoardUI {
                 if (board.gameState == GameStates.Player1sTurn || board.gameState == GameStates.Player2sTurn) {
                     //now that animation is finished, prepare for next move
                     if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
-                        playAIMove();
+                        setTimeout(function () { MCTS.resume(); playAIMove(); },5);
                     } else { //show new piece ready to drop for human players
                         if (unprocessedMouseMoveEvent) {
                             processMouseMove(unprocessedMouseMoveEvent);
@@ -343,10 +339,11 @@ module Connect4BoardUI {
                             currentYofFallingPiece = -holeSpacing / 2;
                             drawSingleLoosePiece(columnOfFallingPiece);
                         }
+                        //restart MCTS solver, which was paused during animation; 
+                        //the 5 ms delay and the use of an anonymous function required to avoid stutter in the piece drop animation in some browsers. 
+                        setTimeout(function () { MCTS.resume(); },5);
                     }
-                    //restart MCTS solver, which was paused during animation; 
-                    //the 5 ms delay and the use of an anonymous function required to avoid stutter in the piece drop animation in some browsers. 
-                    setTimeout(function () { MCTS.resume();},5);
+                    
                 } else {
                     processEndOfGame();
                 }
@@ -419,22 +416,28 @@ module Connect4BoardUI {
 
 
     function processEndOfGame(): void {
-        if (board.gameState == GameStates.Player1Wins)
-            alert('connect4! by Player 1 - end of game handling not yet written');
-        else if (board.gameState == GameStates.Player2Wins)
-            alert('connect4! by Player 2 - end of game handling not yet written');
-        else if (board.gameState == GameStates.Draw)
-            alert('draw - end of game handling not yet written');
-        else
-            alert('processEndOfGame called, but board.gamestate does not match.');
+        ctx.save();
+        translateCanvas();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = 'bold 30pt Calibri';
+        ctx.fillStyle = "#777777"
+        ctx.clearRect(-(canvas.width - boardWidth) / 2, -holeSpacing, Connect4Board.numCols * holeSpacing / scalePct, holeSpacing - 1); //clear area above board
+        if ( (AI_Player==0 && board.gameState == GameStates.Player2Wins) || (AI_Player==1 && board.gameState == GameStates.Player1Wins) ) {
+            ctx.fillText("You Win!", canvas.width / 2, -holeSpacing / 2);
+        } else if ( (AI_Player==0 && board.gameState == GameStates.Player1Wins) || (AI_Player==1 && board.gameState == GameStates.Player2Wins) ) {
+            ctx.fillText("You Lost", canvas.width / 2, -holeSpacing / 2);
+        } else if (board.gameState == GameStates.Draw) {
+            ctx.fillText("Draw", canvas.width / 2, -holeSpacing / 2);
+        } else {
+            console.log('processEndOfGame called, but board.gamestate does not match.');
+        }
+        ctx.restore();
+        //newGameBtn.innerText = "Start A New Game"
     }
 }
 
 //Todos
-//limit the text size of the "Thinking" display.
-//<!--Board Width; Board Height; <-- alter the event handlers so they only resize on mouseup/final choice made.
-
-//limit widths and heights so that animations will still work cleanly, text shows up clearly, etc.  (20 is too much!).
 
 //Difficulty Level; Player 1 or Player2; Spit Out Some Stats. -->
 //--process beginning of game when play1 is the AI instead of player 2.

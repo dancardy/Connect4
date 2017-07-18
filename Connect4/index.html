@@ -10,16 +10,21 @@
     <script src="connect4.js"></script>
 </head>
 <body>
-    <div id="connect4MainCanvasDiv" style="height: 500px;">
-        <canvas id="connect4MainCanvas" width="100" height="100" style="display:block; border:1px solid black; margin:auto;">This webapp is not supported/enabled by your browser.  Please enable javascript and use a browser that supports HTML5 (such as Chrome, Safari, Firefox, Internet Explorer, etc.)</canvas>
+
+<div id="connect4MainCanvasDiv" style="height: 500px; margin-bottom:1rem;">
+    <canvas id="connect4MainCanvas" width="450" height="450" style="display:block; border:1px solid black; margin:auto;">This webapp is not supported/enabled by your browser.  Please enable javascript and use a browser that supports HTML5 (such as Chrome, Safari, Firefox, Internet Explorer, etc.)</canvas>
+</div>
+<div style="text-align:center;">
+    <button id="NewGameBtn">New Game</button><br />
+    <label for="Difficulty">Difficulty:</label> <input type="range" id="Difficulty" min=1 max=9 value=8><output id="difficultyValue">8</output><br />
+    <label for="BoardWidth">Board Width:</label> <input type="range" id="BoardWidth" min=4 max=12 value=7><output id="widthValue">7</output><br />
+    <label for="BoardHeight">Board Height:</label> <input type="range" id="BoardHeight" min=4 max=12 value=6><output id="heightValue">6</output>
+</div>
+
+    
+    <div>
+        <span id="debugspan"></span>
     </div>
-
-    <span id="debugspan"></span>
-        <label for="BoardWidth">Board Width:</label> <input type="range" id="BoardWidth" min=3 max=20 value=7><output id="widthValue">7</output><br />
-        <label for="BoardHeight">Board Height:</label> <input type="range" id="BoardHeight" min=3 max=20 value=6><output id="heightValue">6</output>
-        <button id="pauseBtn">Play AI</button>
-
-
 
 
 </body>
