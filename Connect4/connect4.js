@@ -1,4 +1,3 @@
-var debugSpan;
 window.onload = function () {
     Connect4BoardUI.init();
 };
@@ -29,7 +28,6 @@ var Connect4BoardUI;
     var processingTimeSlider;
     var connectNumSlider;
     function init() {
-        debugSpan = document.querySelector("#debugspan");
         textOutputSpan = document.querySelector("#textOutputSpan");
         newGameBtn = document.querySelector("#newGameBtn");
         newGameBtn.addEventListener('click', newGameBtnPressed);
@@ -669,8 +667,11 @@ var MCTS;
         return pct;
     }
     MCTS.getProcessingPct = getProcessingPct;
-    var debugSpanLastUpdate = 0;
     function execute() {
+        if (MCTS.simulationState != 1) {
+            console.log('execute called while not running');
+            return;
+        }
         startTime = Date.now();
         var currNode;
         while ((Date.now() < startTime + processingInterval) &&
@@ -686,53 +687,6 @@ var MCTS;
         }
         else {
             pause();
-        }
-        if (MCTS.simulationState == 0 || Date.now() >= debugSpanLastUpdate + 1000) {
-            debugSpanLastUpdate = Date.now();
-            debugSpan.innerHTML = "Threshold: " + Connect4Board.threshold + "<br>";
-            if (MCTS.simulationState == 1) {
-                debugSpan.innerHTML += "State is: Running<br>";
-            }
-            else if (MCTS.simulationState == 0) {
-                debugSpan.innerHTML += "State is: Paused<br>";
-            }
-            else if (MCTS.simulationState == 2) {
-                debugSpan.innerHTML += "State is: Stopped<br>";
-            }
-            debugSpan.innerHTML += "Root times Visited: " + rootNode.timesVisted + "<br>";
-            debugSpan.innerHTML += '<br>numberOfNodes: ' + rootNode.numChildren + '  repeat visits: ' + (rootNode.timesVisted - rootNode.numChildren) + "<br>";
-            debugSpan.innerHTML += "playouts*1000/second: " + Math.floor(playout_counter / ((Date.now() - gameStartTime))) + '<br>  processing time Limit: ' + processingInterval;
-            debugSpan.innerHTML += '<br>playouts (M):' + Math.floor(playout_counter / 1000000);
-            debugSpan.innerHTML += '<br>rootnode P1 win ratio: ' + rootNode.numP1Wins + " / " + rootNode.timesVisted + " currentPlayer: ";
-            if (rootNode.board.gameState == 0)
-                debugSpan.innerHTML += "1";
-            else if (rootNode.board.gameState == 1)
-                debugSpan.innerHTML += "2";
-            else
-                debugSpan.innerHTML += "game over";
-            debugSpan.innerHTML += "<br> Move to make:" + getRecommendedMove();
-            for (var i = 0; i < rootNode.board.availableMoves.length; i++) {
-                if (rootNode.child[i]) {
-                    if (rootNode.board.gameState == 0) {
-                        debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
-                        debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP1Wins * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP1Wins + " / " + rootNode.child[i].timesVisted;
-                    }
-                    else if (rootNode.board.gameState == 1) {
-                        debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
-                        debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP2Wins * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP2Wins + " / " + rootNode.child[i].timesVisted;
-                    }
-                    else {
-                        console.log('gamestate not as expected in MCTS debug printout code');
-                    }
-                }
-                else {
-                    debugSpan.innerHTML += "<br>--% = child not created";
-                }
-            }
         }
     }
     function pauseAndProcessMove(move) {

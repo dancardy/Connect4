@@ -75,11 +75,11 @@ module MCTS {
         return pct;
     }
 
-    var debugSpanLastUpdate = 0;
+    //var debugSpanLastUpdate = 0;
     function execute(): void { //UCTSearch
-        //if (simulationState != States.Running) {
-        //    console.log('execute called while not running'); return;
-        //}
+        if (simulationState != States.Running) {
+            console.log('execute called while not running'); return;
+        }
         startTime = Date.now();
         var currNode: Node;
         while ( (Date.now() < startTime + processingInterval) && //stay within time interval (this is just the time interval for ceding control back to UI)
@@ -100,7 +100,7 @@ module MCTS {
         }
         
 
-        if (simulationState == States.Paused || Date.now() >= debugSpanLastUpdate + 1000) {
+        /*if (simulationState == States.Paused || Date.now() >= debugSpanLastUpdate + 1000) {
             debugSpanLastUpdate = Date.now();
             debugSpan.innerHTML = "Threshold: " + Connect4Board.threshold + "<br>";
             if (simulationState == States.Running) {
@@ -145,7 +145,7 @@ module MCTS {
                 }
             }
         }
-
+*/
         //
     }
 
