@@ -66,6 +66,15 @@ module MCTS {
         }
     }
 
+    export function getProcessingPct() : number {
+        if (simulationState == States.Paused) {
+            return 100;
+        }
+        var pct:number = Math.floor(rootNode.numChildren*100/maxNodes);
+        if (pct == 100) return 99;
+        return pct;
+    }
+
     var debugSpanLastUpdate = 0;
     function execute(): void { //UCTSearch
         //if (simulationState != States.Running) {
@@ -93,7 +102,7 @@ module MCTS {
 
         if (simulationState == States.Paused || Date.now() >= debugSpanLastUpdate + 1000) {
             debugSpanLastUpdate = Date.now();
-            debugSpan.innerHTML = Date.now() + "<br>";
+            debugSpan.innerHTML = "Threshold: " + Connect4Board.threshold + "<br>";
             if (simulationState == States.Running) {
                 debugSpan.innerHTML += "State is: Running<br>";
             } else if (simulationState == States.Paused) {

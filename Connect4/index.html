@@ -14,11 +14,26 @@
 <div id="connect4MainCanvasDiv" style="height: 500px; margin-bottom:1rem;">
     <canvas id="connect4MainCanvas" width="450" height="450" style="display:block; border:1px solid black; margin:auto;">This webapp is not supported/enabled by your browser.  Please enable javascript and use a browser that supports HTML5 (such as Chrome, Safari, Firefox, Internet Explorer, etc.)</canvas>
 </div>
+<style>
+#difficultyLabel.grayed,
+#difficultyValue.grayed,
+#boardWidthLabel.grayed,
+#widthValue.grayed,
+#boardHeightLabel.grayed,
+#heightValue.grayed,
+#connectNumLabel.grayed,
+#connectNumValue.grayed {
+    color: gray;
+}
+</style>
 <div style="text-align:center;">
-    <button id="NewGameBtn">New Game</button><br />
-    <label for="Difficulty">Difficulty:</label> <input type="range" id="Difficulty" min=1 max=9 value=8><output id="difficultyValue">8</output><br />
-    <label for="BoardWidth">Board Width:</label> <input type="range" id="BoardWidth" min=4 max=12 value=7><output id="widthValue">7</output><br />
-    <label for="BoardHeight">Board Height:</label> <input type="range" id="BoardHeight" min=4 max=12 value=6><output id="heightValue">6</output>
+    <button id="newGameBtn">Restore Defaults</button><br /><br />
+    <label id="difficultyLabel" for="difficulty">Difficulty:</label> <input type="range" id="difficulty" min=2 max=9 value=6><output id="difficultyValue">5</output><br />
+    <label id="processingTimeLabel" for="processingTime">Opponent's Max Thinking Time:</label> <input type="range" id="processingTime" min=2 max=120 value=10><output id="processingTimeValue">10</output><span>s</span><br />
+    <span id="textOutputSpan"></span><br /><br />
+    <label id="boardWidthLabel" for="boardWidth">Board Width:</label> <input type="range" id="boardWidth" min=5 max=9 value=7><output id="widthValue">7</output><br />
+    <label id="boardHeightLabel" for="boardHeight">Board Height:</label> <input type="range" id="boardHeight" min=5 max=9 value=6><output id="heightValue">6</output><br />
+    <label id="connectNumLabel" for="connectNum">Number to connect:</label> <input type="range" id="connectNum" min=3 max=5 value=4><output id="connectNumValue">4</output><br />    
 </div>
 
     

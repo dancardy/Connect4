@@ -40,13 +40,20 @@ module Connect4BoardUI {
     var newGameBtn: HTMLButtonElement;
     var widthSlider: HTMLInputElement;
     var heightSlider: HTMLInputElement;
+    var difficultySlider: HTMLInputElement;
+    var textOutputSpan: HTMLSpanElement
+    var processingTimeSlider: HTMLInputElement;
+    var connectNumSlider: HTMLInputElement;
+
 
     export function init(): void {
         debugSpan = <HTMLSpanElement>document.querySelector("#debugspan");
-        newGameBtn = <HTMLButtonElement>document.querySelector("#NewGameBtn");
-        newGameBtn.addEventListener('click', newGameBtnPressed);
-
         //above is temporary, below should be kept.
+
+        textOutputSpan = <HTMLSpanElement>document.querySelector("#textOutputSpan");
+
+        newGameBtn = <HTMLButtonElement>document.querySelector("#newGameBtn");
+        newGameBtn.addEventListener('click', newGameBtnPressed);
 
         canvas = <HTMLCanvasElement>document.querySelector("#connect4MainCanvas");
         ctx = canvas.getContext('2d');
@@ -55,11 +62,20 @@ module Connect4BoardUI {
         canvas.addEventListener('click', processClick);
         canvas.addEventListener('mousemove', processMouseMove);
        
-        widthSlider = <HTMLInputElement>document.querySelector("#BoardWidth");
+        widthSlider = <HTMLInputElement>document.querySelector("#boardWidth");
         widthSlider.addEventListener('change', changeBoardWidth);
 
-        heightSlider = <HTMLInputElement>document.querySelector("#BoardHeight");
+        heightSlider = <HTMLInputElement>document.querySelector("#boardHeight");
         heightSlider.addEventListener('change', changeBoardHeight);
+    
+        difficultySlider = <HTMLInputElement>document.querySelector("#difficulty");
+        difficultySlider.addEventListener('change', changeDifficulty);
+
+        processingTimeSlider = <HTMLInputElement>document.querySelector("#processingTime");
+        processingTimeSlider.addEventListener('change', changeProcessingTime);
+
+        connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
+        connectNumSlider.addEventListener('change', changeConnectNum);
 
         window.addEventListener('resize', function () { resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1)) }, false);
         initBoard();
@@ -68,24 +84,75 @@ module Connect4BoardUI {
     function initBoard(): void {
         Connect4Board.numRows = parseInt(document.getElementById("heightValue").innerHTML);
         Connect4Board.numCols = parseInt(document.getElementById("widthValue").innerHTML);
-        Connect4Board.threshold = 4;
+        Connect4Board.threshold = parseInt(document.getElementById("connectNumValue").innerHTML);
         AI_Player = 1;
-        MCTS.maxNodes = 300000;//300000;//300000;//300k max
-        //500 is easy
-        //1000 is medium (you beat it)
-        //50000 is hard
-        //300000 is very hard. 300k is max
-        //Player wait 5000 for hard; 2000 for all other levels.
-
-        //need to scale these for different board sizes/widths; 5000 resulted in awful play on a 6x20. (it let you just make a tower and win in 4 moves).
-        //need to remember if player wait should wait for nodes (doesn't make sense since will run out of nodes at end of game'), or just time;
-        //should wait less time if are already at max nodes
-        //review nodes and timing more.
-
+        AI_Player_Max_Wait = parseInt(document.getElementById("processingTimeValue").innerHTML)*1000;
+        
+        var targetDepth : number = parseFloat(document.getElementById("difficultyValue").innerHTML);
+        //Use Finite Geometric series summation [that sum from n=0 to N of r^n = (1-r^(N+1))/(1-r) ], to set maxNodes to a number that
+        // approximates the tree depth received from getMaxDepth;  This is the max depth if the tree were full; in reality it will be a little more.
+        MCTS.maxNodes = (1-Math.pow(Connect4Board.numCols,targetDepth+1))/(1-Connect4Board.numCols);
+       
         board = new Connect4Board();
         MCTS.start(board);
             
         resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1));
+        enableControls(true);
+    }
+
+    var controlsEnabledNow:boolean = true;
+    function enableControls(enable:boolean) :void {
+        if (enable) {
+            if (!controlsEnabledNow) {
+                widthSlider.disabled = false;
+                heightSlider.disabled = false;
+                difficultySlider.disabled = false;
+                connectNumSlider.disabled = false;
+                document.getElementById("difficultyLabel").className = "";
+                document.getElementById("boardWidthLabel").className = "";
+                document.getElementById("boardHeightLabel").className = "";
+                document.getElementById("connectNumLabel").className = "";
+                document.getElementById("difficultyValue").className = "";
+                document.getElementById("widthValue").className = "";
+                document.getElementById("heightValue").className = "";
+                document.getElementById("connectNumValue").className = "";
+            }
+            if ( (board.gameState == GameStates.Player1sTurn) || (board.gameState == GameStates.Player2sTurn) ) {
+                newGameBtn.innerText = "Restore Defaults";
+            } else {
+                newGameBtn.innerText = "New Game";
+            }
+        } else if (!enable && controlsEnabledNow) {
+            widthSlider.disabled = true;
+            heightSlider.disabled = true;
+            difficultySlider.disabled = true;
+            connectNumSlider.disabled = true;
+            document.getElementById("difficultyLabel").className += "grayed";
+            document.getElementById("boardWidthLabel").className += "grayed";
+            document.getElementById("boardHeightLabel").className += "grayed";
+            document.getElementById("connectNumLabel").className += "grayed";
+            document.getElementById("difficultyValue").className += "grayed";
+            document.getElementById("widthValue").className += "grayed";
+            document.getElementById("heightValue").className += "grayed";
+            document.getElementById("connectNumValue").className += "grayed";
+            newGameBtn.innerText = "New Game";
+        }
+        controlsEnabledNow = enable;
+    }
+
+    function getDepthTarget(difficulty: number): number {
+        if (difficulty <= 0) return 1;
+        switch (difficulty) {
+            case 1: return 1;
+            case 2: return 2;
+            case 3: return 3;
+            case 4: return 4;
+            case 5: return 4.5;
+            case 6: return 5;
+            case 7: return 5.5;
+            case 8: return 6;
+            default: return 6.5;
+        }   
     }
 
     function changeBoardWidth(event: any): void {
@@ -102,9 +169,44 @@ module Connect4BoardUI {
         initBoard();
     }
 
+    function changeConnectNum(event: any): void {
+        MCTS.stop();
+        var num: any = parseInt(event.target.value);
+        document.getElementById("connectNumValue").innerHTML = num;
+        initBoard();
+    }
+
+    function changeDifficulty(event: any): void {
+        MCTS.stop();
+        var difficultyNum: number = parseInt(event.target.value);
+        document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(difficultyNum);
+        initBoard();
+    }
+
+    function changeProcessingTime(event: any) :void {
+        var time:any = parseInt(event.target.value)
+        document.getElementById("processingTimeValue").innerHTML = time;
+        AI_Player_Max_Wait = parseInt(time)*1000;
+        if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
+            textOutputSpan.innerHTML = "Change to Max Thinking Time will take effect on the next move.";
+        }
+    }
 
     function newGameBtnPressed():void {
         MCTS.stop();
+        if (newGameBtn.innerText == "Restore Defaults") {
+            MCTS.stop();
+            difficultySlider.value = "6"
+            document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(parseInt(difficultySlider.value));
+            widthSlider.value = "7";
+            document.getElementById("widthValue").innerHTML = widthSlider.value;
+            heightSlider.value = "6";
+            document.getElementById("heightValue").innerHTML = heightSlider.value;
+            processingTimeSlider.value = "10";
+            document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
+            connectNumSlider.value = "4";
+            document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+        }
         initBoard();
     }
 
@@ -167,6 +269,7 @@ module Connect4BoardUI {
 
     function makeMove(col: number): void {
         columnOfFallingPiece = col;
+        enableControls(false);
         MCTS.pauseAndProcessMove(columnOfFallingPiece);
             
         //Begin Animation!
@@ -195,6 +298,7 @@ module Connect4BoardUI {
         if (board.colHeight[columnOfFallingPiece] < Connect4Board.numRows) {
             makeMove(columnOfFallingPiece);
         }
+        textOutputSpan.innerHTML = "";
     }
 
     function processMouseMove(event: MouseEvent): void {
@@ -255,10 +359,12 @@ module Connect4BoardUI {
                 setTimeout(playAIMove, 250);
             } else {
                 thinkingIndicated = false;
+                textOutputSpan.innerHTML = "Max thinking time was reached.  Processing was about " + MCTS.getProcessingPct() + "% done.";
                 makeMove(MCTS.getRecommendedMove());
             }
         } else { //MCTS paused itself.
             thinkingIndicated = false;
+            textOutputSpan.innerHTML = "";
             makeMove(MCTS.getRecommendedMove());
         }
     }
@@ -433,30 +539,7 @@ module Connect4BoardUI {
             console.log('processEndOfGame called, but board.gamestate does not match.');
         }
         ctx.restore();
-        //newGameBtn.innerText = "Start A New Game"
+        enableControls(true);
+        textOutputSpan.innerHTML = "";
     }
 }
-
-//Todos
-
-//Difficulty Level; Player 1 or Player2; Spit Out Some Stats. -->
-//--process beginning of game when play1 is the AI instead of player 2.
-//-- process end of game as part of UI as well.
-
-//todo idea: save (using the html5 cookies equivalents) your last settings, game success/failure history, etc.
-
-//writeup all features (resizable board), resolution independent, animations work at constant drop rate, regardless of framerate that client is capable of providing.
-
-
-//interactive controls: http://jsbin.com/fatube/edit?html,output
-//http://jsbin.com/qigoro/edit?html,js,output
-
-//android radio buttons with input type =range; 0-1; step 1. (not sure if the step will work, but if not, can force on the js).
-//details, including how to style w/ css to get desired look: Week 5: HTML5 Forms > 5.4 New input types > &lt;input type="range"&gt;
-//https://courses.edx.org/courses/course-v1:W3Cx+HTML5.1x+4T2015/courseware/36a27299952f4ecf87066b10a1928bb5/66d1519efebf474f9e44a38f27c87070/
-//<input id="range" name="range" type="range" min="0" max="100" step="5"/>
-
-
-
-//per 6.4, use local storage to save default skill levels, etc.
-
