@@ -154,5 +154,8 @@ var Connect4Board = (function () {
             }
         }
     };
+    Connect4Board.numRows = 6;
+    Connect4Board.numCols = 7;
+    Connect4Board.threshold = 4;
     return Connect4Board;
-}());
+})();

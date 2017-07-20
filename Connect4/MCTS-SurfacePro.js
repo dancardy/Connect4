@@ -1,85 +1,62 @@
 var MCTS;
 (function (MCTS) {
     var rootNode;
+    var currNode;
     var startTime;
-    var processingInterval = 25;
+    MCTS.processingInterval = 100;
     var timeoutHandle;
     var playout_counter = 0;
     var gameStartTime;
-    MCTS.maxNodes = 100000;
-    function start(board) {
+    function initialize(board) {
         rootNode = new Node(new Connect4Board(board), null);
-        MCTS.simulationState = 0;
-        resume();
+        MCTS.processingInterval = 100;
+        gameStartTime = Date.now();
+        execute();
     }
-    MCTS.start = start;
-    function resume() {
-        if (MCTS.simulationState != 2) {
-            MCTS.simulationState = 1;
-            gameStartTime = Date.now();
-            playout_counter = 0;
-            execute();
-        }
-    }
-    MCTS.resume = resume;
-    function pause() {
-        if (MCTS.simulationState != 2) {
-            clearTimeout(timeoutHandle);
-            MCTS.simulationState = 0;
-        }
-    }
-    MCTS.pause = pause;
-    function stop() {
-        pause();
-        MCTS.simulationState = 2;
-        rootNode = null;
-    }
-    MCTS.stop = stop;
-    function getRecommendedMove() {
-        if (MCTS.simulationState != 2) {
-            if (rootNode) {
-                return rootNode.board.availableMoves[bestChildIndex(rootNode, 0)];
-            }
-            else {
-                return null;
-            }
-        }
-    }
-    MCTS.getRecommendedMove = getRecommendedMove;
-    function getProcessingPct() {
-        if (MCTS.simulationState == 0) {
-            return 100;
-        }
-        var pct = Math.floor(rootNode.numChildren * 100 / MCTS.maxNodes);
-        if (pct == 100)
-            return 99;
-        return pct;
-    }
-    MCTS.getProcessingPct = getProcessingPct;
+    MCTS.initialize = initialize;
     function execute() {
-        if (MCTS.simulationState != 1) {
-            console.log('execute called while not running');
-            return;
-        }
         startTime = Date.now();
-        var currNode;
-        while ((Date.now() < startTime + processingInterval) &&
-            (rootNode.numChildren < MCTS.maxNodes) &&
-            (rootNode.timesVisted - rootNode.numChildren < MCTS.maxNodes * 10)) {
+        while (Date.now() < startTime + MCTS.processingInterval) {
             playout_counter++;
             currNode = getNodeToTest(rootNode);
             updateStats(currNode, simulate(currNode));
         }
-        if ((rootNode.numChildren < MCTS.maxNodes) &&
-            (rootNode.timesVisted - rootNode.numChildren < MCTS.maxNodes * 10)) {
-            timeoutHandle = setTimeout(execute, 2);
+        debugSpan.innerHTML = "playouts/second: " + playout_counter * 1000 / ((Date.now() - startTime));
+        debugSpan.innerHTML += '<br>playouts:' + playout_counter + 'processing time Limit: ' + MCTS.processingInterval;
+        debugSpan.innerHTML += '<br>rootnode: ' + rootNode.numP1Wins + " / " + rootNode.timesVisted + " currentPlayer: ";
+        if (rootNode.board.gameState == 0)
+            debugSpan.innerHTML += "1";
+        else if (rootNode.board.gameState == 1)
+            debugSpan.innerHTML += "2";
+        else
+            debugSpan.innerHTML += "game over";
+        debugSpan.innerHTML += "<br> Move to make:" + rootNode.board.availableMoves[bestChildIndex(rootNode, 0)];
+        for (var i = 0; i < rootNode.board.availableMoves.length; i++) {
+            if (rootNode.child[i]) {
+                if (rootNode.board.gameState == 0) {
+                    debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
+                    debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
+                    debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP1Wins * 100 / rootNode.child[i].timesVisted) + "%";
+                    debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP1Wins + " / " + rootNode.child[i].timesVisted;
+                }
+                else if (rootNode.board.gameState == 1) {
+                    debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
+                    debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
+                    debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP2Wins * 100 / rootNode.child[i].timesVisted) + "%";
+                    debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP2Wins + " / " + rootNode.child[i].timesVisted;
+                }
+                else {
+                    alert('gamestate not as expected in MCTS debug printout code');
+                }
+            }
+            else {
+                debugSpan.innerHTML += "<br>--% = child not created";
+            }
         }
-        else {
-            pause();
-        }
+        timeoutHandle = setTimeout(execute, 0);
     }
-    function pauseAndProcessMove(move) {
-        pause();
+    function processMove(move) {
+        clearTimeout(timeoutHandle);
         var index;
         for (index = 0; index < rootNode.board.availableMoves.length; index++) {
             if (rootNode.board.availableMoves[index] == move) {
@@ -93,17 +70,11 @@ var MCTS;
         else {
             rootNode = new Node(new Connect4Board(rootNode.board, move), null);
         }
-        if (rootNode.board.gameState != 0 && rootNode.board.gameState != 1) {
-            stop();
+        if (rootNode.board.gameState == 0 || rootNode.board.gameState == 1) {
+            execute();
         }
     }
-    MCTS.pauseAndProcessMove = pauseAndProcessMove;
-    function incrementNumChildren(firstParent) {
-        while (firstParent) {
-            firstParent.numChildren++;
-            firstParent = firstParent.parent;
-        }
-    }
+    MCTS.processMove = processMove;
     function getNodeToTest(root) {
         var curr = root;
         var index;
@@ -111,7 +82,6 @@ var MCTS;
             for (index = 0; index < curr.board.availableMoves.length; index++) {
                 if (!curr.child[index]) {
                     curr.child[index] = new Node(new Connect4Board(curr.board, curr.board.availableMoves[index]), curr);
-                    incrementNumChildren(curr);
                     return curr.child[index];
                 }
             }
@@ -119,7 +89,7 @@ var MCTS;
         }
         return curr;
     }
-    var drawWeight = 0.5;
+    var drawWeight = 0.2;
     function bestChildIndex(curr, cp) {
         var currChild;
         var maxIndex = 0;
@@ -171,24 +141,23 @@ var MCTS;
                 curr.numDraws += 1;
             }
             else {
-                console.log('in MCTS.updateStats -- reached code that never should have been reached');
+                alert('this code never should have been reached');
             }
             curr.timesVisted += 1;
             curr = curr.parent;
         }
     }
-    var c_sub_p = 8;
+    var c_sub_p = 16;
     var Node = (function () {
         function Node(board, parent) {
             this.numP1Wins = 0;
             this.numP2Wins = 0;
             this.numDraws = 0;
             this.timesVisted = 0;
-            this.numChildren = 0;
             this.board = board;
             this.parent = parent;
             (this.child = []).length = board.availableMoves.length;
         }
         return Node;
-    }());
+    })();
 })(MCTS || (MCTS = {}));

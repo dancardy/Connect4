@@ -1,29 +1,27 @@
-﻿/*
-This file implements a Monte Carlo Tree Search.  The Upper Confidence Bounds for Trees (UCT) algorithm is used
-to expand the tree in a way that balances the breadth and depth of the search appropriately. (The entire tree
-that represents all possible sequence of game moves may never be constructed, but the tree is expanded such that
-the chance of selecting a move that one would not have selected if the whole tree had been constructed decreases
-with each expansion of the tree).
+﻿/* ****************************************************************************
+This file implements a Monte Carlo Tree Search.  The Upper Confidence Bounds 
+for Trees (UCT) algorithm is used to expand the tree in a way that balances the 
+breadth and depth of the search appropriately -- the more promising branches are
+prioritized for expansion over the less promising branches. 
 
-**re-read paper and confirm this is the right way to say this** Perhaps "keeps the tree within a constact factor of the best possible bound on the growth of regret.)
-
-Each node in the tree represents a state of the game board.  Each child vertex represents a possible next move.
-The value associated with each move that is calculated by the monte carlo simulations is negated at each subsequent level of the
-tree (consistent with negamax-style algoithms) to reflect that the best results for player one are the worst results for player two.
-*/
-
-
-
-//be sure to implement optimizations, like not exploring beyond your own winning move..
+Each node in the tree represents a state of the game board.  Each child vertex
+represents a possible next move.  The value associated with each move that is 
+calculated by the monte carlo simulations is negated at each subsequent level of
+the tree (consistent with negamax-style algoithms) to reflect that the best results
+for player one are the worst results for player two.
+**************************************************************************** */
 
 module MCTS {
     var rootNode: Node;
     var startTime: number;
-    var processingInterval: number = 25; //how long execute() runs before ceding control to anything that's queued up and need to run
+    var processingInterval: number = 25; //how long execute() blocks waiting scripts from running
     var timeoutHandle: number;
-    var playout_counter: number = 0;//debug only
-    var gameStartTime: number; //stats only
     export var maxNodes: number = 100000;
+
+    //c_sup_p is the exploration factor.  it must be >0 for there to be exploration
+    //Math.SQRT1_2 is a common default for large trees, but set it higher here because
+    // otherwise small trees are more likely to miss obvious moves without extra exploration
+    const c_sub_p: number = 8; 
 
     export const enum States { Paused = 0, Running = 1, Stopped = 2}
     export var simulationState: States;
@@ -37,8 +35,6 @@ module MCTS {
     export function resume() :void {
         if (simulationState != States.Stopped) {
             simulationState = States.Running;
-            gameStartTime = Date.now();
-            playout_counter = 0;
             execute();
         }
     }
@@ -53,7 +49,7 @@ module MCTS {
     export function stop(): void {
         pause();
         simulationState = States.Stopped;
-        rootNode = null; //do want this, just need to make sure no calls to execute have built up first (is causing crash when execute gets subsequently called)
+        rootNode = null;
     }
 
     export function getRecommendedMove(): number {
@@ -66,6 +62,9 @@ module MCTS {
         }
     }
 
+    //Tells you what percentage of the maxNodes have been explored.
+    //Indicates 99 instead of 100 if processing is not done (simulationState != States.paused)
+    //The remaining processing in this case is iteratingover the existing tree nodes to update stats
     export function getProcessingPct() : number {
         if (simulationState == States.Paused) {
             return 100;
@@ -75,78 +74,25 @@ module MCTS {
         return pct;
     }
 
-    //var debugSpanLastUpdate = 0;
     function execute(): void { //UCTSearch
-        if (simulationState != States.Running) {
-            console.log('execute called while not running'); return;
-        }
         startTime = Date.now();
         var currNode: Node;
-        while ( (Date.now() < startTime + processingInterval) && //stay within time interval (this is just the time interval for ceding control back to UI)
+        while ( (Date.now() < startTime + processingInterval) && //stop when it's time to allow other scripts to run
             (rootNode.numChildren < maxNodes) &&  //stay within space (memory) limitation
             (rootNode.timesVisted - rootNode.numChildren < maxNodes *10) //and towards the end of the game, don't keep processing once the answer is clear.
             ) {
-            playout_counter++;
+
             currNode = getNodeToTest(rootNode);
             updateStats(currNode, simulate(currNode));
         }
         
-        if ( (rootNode.numChildren < maxNodes) &&  //within space (memory limitiation)
-            (rootNode.timesVisted - rootNode.numChildren < maxNodes * 10) // the answer is unclear enough to justify more processing
+        if ( (rootNode.numChildren < maxNodes) && 
+            (rootNode.timesVisted - rootNode.numChildren < maxNodes * 10)
             ) {
-            timeoutHandle = setTimeout(execute, 2);
+            timeoutHandle = setTimeout(execute, 2); //continue processing once give other scripts a chance to run
         } else {
             pause();
-        }
-        
-
-        /*if (simulationState == States.Paused || Date.now() >= debugSpanLastUpdate + 1000) {
-            debugSpanLastUpdate = Date.now();
-            debugSpan.innerHTML = "Threshold: " + Connect4Board.threshold + "<br>";
-            if (simulationState == States.Running) {
-                debugSpan.innerHTML += "State is: Running<br>";
-            } else if (simulationState == States.Paused) {
-                debugSpan.innerHTML += "State is: Paused<br>";
-            } else if (simulationState == States.Stopped) {
-                debugSpan.innerHTML += "State is: Stopped<br>";
-            }
-            debugSpan.innerHTML += "Root times Visited: " + rootNode.timesVisted + "<br>";
-            debugSpan.innerHTML += '<br>numberOfNodes: ' + rootNode.numChildren + '  repeat visits: ' + (rootNode.timesVisted - rootNode.numChildren) + "<br>";
-
-            debugSpan.innerHTML += "playouts*1000/second: " + Math.floor(playout_counter / ((Date.now() - gameStartTime))) + '<br>  processing time Limit: ' + processingInterval;
-            debugSpan.innerHTML += '<br>playouts (M):' + Math.floor(playout_counter / 1000000);
-            debugSpan.innerHTML += '<br>rootnode P1 win ratio: ' + rootNode.numP1Wins + " / " + rootNode.timesVisted + " currentPlayer: ";
-            if (rootNode.board.gameState == GameStates.Player1sTurn)
-                debugSpan.innerHTML += "1";
-            else if (rootNode.board.gameState == GameStates.Player2sTurn)
-                debugSpan.innerHTML += "2";
-            else
-                debugSpan.innerHTML += "game over";
-            debugSpan.innerHTML += "<br> Move to make:" + getRecommendedMove();
-            for (var i = 0; i < rootNode.board.availableMoves.length; i++) {
-                if (rootNode.child[i]) {
-                    if (rootNode.board.gameState == GameStates.Player1sTurn) {
-                        debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP1Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
-
-                        debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP1Wins * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP1Wins + " / " + rootNode.child[i].timesVisted;
-                    } else if (rootNode.board.gameState == GameStates.Player2sTurn) {
-                        debugSpan.innerHTML += "<br>" + Math.round(100 * rootNode.child[i].timesVisted / rootNode.timesVisted) + " | " + Math.round((rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + Math.round(rootNode.child[i].numP2Wins + drawWeight * rootNode.child[i].numDraws) + " / " + rootNode.child[i].timesVisted;
-
-                        debugSpan.innerHTML += "   |   " + Math.round(rootNode.child[i].numP2Wins * 100 / rootNode.child[i].timesVisted) + "%";
-                        debugSpan.innerHTML += ' = ' + rootNode.board.availableMoves[i] + ': ' + rootNode.child[i].numP2Wins + " / " + rootNode.child[i].timesVisted;
-                    } else {
-                        console.log('gamestate not as expected in MCTS debug printout code');
-                    }
-                } else {
-                    debugSpan.innerHTML += "<br>--% = child not created";
-                }
-            }
-        }
-*/
-        //
+        }     
     }
 
     export function pauseAndProcessMove(move: number): void {
@@ -167,7 +113,9 @@ module MCTS {
         if (rootNode.board.gameState != GameStates.Player1sTurn && rootNode.board.gameState != GameStates.Player2sTurn) {
             stop();
         }
-        //note: simulation state remains paused at end of this function (done so execute won't interfere with animation of the move); a call to resume is necessary, and is made at the end of the UI's animation of the move.
+        //note: simulation state remains paused at end of this function
+        //This is done so processing (the execute function) won't interfere with animation
+        //The caller (the UI) will call to resume to continue processing when animation is complete
     }
 
     function incrementNumChildren(firstParent: Node): void {
@@ -200,19 +148,20 @@ module MCTS {
         var currChild: Node;
         var maxIndex: number = 0;
         var maxValue: number = -Infinity;
-        var currValue: number;
+        var currValue: number; //value indicating importance of visiting this child node
         for (var index: number = 0; index < curr.child.length; index++) {
-            if (!(currChild = curr.child[index])) break; //change to continue if children can be incomplete, but created out of order (not the case now).
-            //note: Javascript makes division by zero = infinity, so the line below works correctly even if currChild.timesVisited is zero.
-            //first term must be in [0,1]
+            if (!(currChild = curr.child[index])) break; //change if children can be incomplete or created out of order (not the case now).
+            
+            //note: Javascript makes division by zero = infinity, so the currValue formula below works correctly even if currChild.timesVisited is zero.
             if (curr.board.gameState == GameStates.Player1sTurn) {
-                currValue = (currChild.numP1Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted); // consider pulling out the *2.
+                currValue = (currChild.numP1Wins + currChild.numDraws * drawWeight) / currChild.timesVisted +  //value from winning
+                            cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);            // + value from being unexplored
             } else if (curr.board.gameState == GameStates.Player2sTurn) {
-                currValue = (currChild.numP2Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted)
-            } else {
-                alert('error -- bestchild is looking for children of board that is in a terminal state!  This code should be unreachable');  //eliminate this from final code.
-            }
-            if ((currValue > maxValue) || (currValue == maxValue && Math.random() < 0.5)) { //second part of the if breaks ties with a coin flip
+                currValue = (currChild.numP2Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + 
+                            cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted)
+            } 
+                                                          //break ties with a coin flip
+            if ((currValue > maxValue) || (currValue == maxValue && Math.random() < 0.5)) { 
                 maxValue = currValue;
                 maxIndex = index;
             }
@@ -220,7 +169,7 @@ module MCTS {
         return maxIndex;
     }
 
-    //returns a GameState based on random game play if node represents an in-progress game; else return resolution of game
+    //returns a GameState based on random game play if node represents an in-progress game; else returns resolution of game
     function simulate(node: Node): GameStates {
         if (node.board.gameState == GameStates.Player1sTurn || node.board.gameState == GameStates.Player2sTurn) {
             var board: Connect4Board = new Connect4Board(node.board);
@@ -245,18 +194,12 @@ module MCTS {
                 curr.numP2Wins += 1;
             } else if (endState == GameStates.Draw) {
                 curr.numDraws += 1;
-            } else {
-                console.log('in MCTS.updateStats -- reached code that never should have been reached');
             }
+
             curr.timesVisted += 1;
             curr = curr.parent;
         }
     }
-
-
-    const c_sub_p: number = 8; //Math.SQRT1_2; //0.01 // Cp must be >0 for there to be exploration (0 is just always choosing the currently most promising node).
-
-
 
     class Node {
         numP1Wins: number = 0;

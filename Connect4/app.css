@@ -2,15 +2,82 @@
     font-family: 'Segoe UI', sans-serif;
 }
 
-/*#connect4MainCanvas {
-    border:1px solid black;
-    padding:0;
-    margin:auto;
-    display:block;
+#difficultyLabel.grayed,
+#difficultyValue.grayed,
+#boardWidthLabel.grayed,
+#widthValue.grayed,
+#boardHeightLabel.grayed,
+#heightValue.grayed,
+#connectNumLabel.grayed,
+#connectNumValue.grayed {
+    color: gray;
 }
 
 #connect4MainCanvasDiv {
-    width:100%;
-    margin-right:10px;*/
-    /*border:1px solid red;*/
-/*}*/
+    margin-bottom: 1rem;
+}
+
+    #connect4MainCanvasDiv.c4-fixed-height {
+        height: 500px;
+    }
+
+@media screen and (max-width: 768px) {
+    #connect4MainCanvasDiv.c4-fixed-height {
+        height: auto;
+    }
+}
+
+#connect4MainCanvas {
+    display: block;
+    border: 1px solid black;
+    margin: auto;
+}
+
+#connect4Controls {
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+input[type=range] {
+    display: inline;
+    width: auto;
+    margin-left: 0.5rem;
+}
+
+label {
+    display: inline;
+    margin: 0;
+    font-weight: normal;
+}
+
+output {
+    display: inline;
+    font-size: inherit;
+    line-height: inherit;
+    color: black;
+}
+
+.table-container {
+    display: table;
+    margin: auto;
+}
+
+.table-row {
+    display: table-row;
+}
+
+.table-cell {
+    display: table-cell;
+}
+
+.table-row:last-of-type .table-cell {
+    border-bottom-style: none;
+}
+    
+#textOutputSpan,
+#processingTimeLabel,
+#processingTimeValue,
+#processingTime-s,
+#processingTime {
+    display: none;
+}

@@ -28,7 +28,6 @@ var Connect4BoardUI;
     var processingTimeSlider;
     var connectNumSlider;
     function init() {
-        textOutputSpan = document.querySelector("#textOutputSpan");
         newGameBtn = document.querySelector("#newGameBtn");
         newGameBtn.addEventListener('click', newGameBtnPressed);
         canvas = document.querySelector("#connect4MainCanvas");
@@ -46,7 +45,11 @@ var Connect4BoardUI;
         processingTimeSlider.addEventListener('change', changeProcessingTime);
         connectNumSlider = document.querySelector("#connectNum");
         connectNumSlider.addEventListener('change', changeConnectNum);
-        window.addEventListener('resize', function () { resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1)); }, false);
+        textOutputSpan = document.querySelector("#textOutputSpan");
+        resetSliderValues();
+        window.addEventListener('resize', function () {
+            resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1));
+        }, false);
         initBoard();
     }
     Connect4BoardUI.init = init;
@@ -151,28 +154,35 @@ var Connect4BoardUI;
             textOutputSpan.innerHTML = "Change to Max Thinking Time will take effect on the next move.";
         }
     }
+    function resetSliderValues() {
+        difficultySlider.value = "6";
+        document.getElementById("difficultyValue").innerHTML = getDepthTarget(parseInt(difficultySlider.value));
+        widthSlider.value = "7";
+        document.getElementById("widthValue").innerHTML = widthSlider.value;
+        heightSlider.value = "6";
+        document.getElementById("heightValue").innerHTML = heightSlider.value;
+        processingTimeSlider.value = "10";
+        document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
+        connectNumSlider.value = "4";
+        document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+    }
     function newGameBtnPressed() {
         MCTS.stop();
         if (newGameBtn.innerText == "Restore Defaults") {
-            MCTS.stop();
-            difficultySlider.value = "6";
-            document.getElementById("difficultyValue").innerHTML = getDepthTarget(parseInt(difficultySlider.value));
-            widthSlider.value = "7";
-            document.getElementById("widthValue").innerHTML = widthSlider.value;
-            heightSlider.value = "6";
-            document.getElementById("heightValue").innerHTML = heightSlider.value;
-            processingTimeSlider.value = "10";
-            document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
-            connectNumSlider.value = "4";
-            document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+            resetSliderValues();
         }
         initBoard();
     }
     function resizeCanvasAccordingToParentSize(aspectRatio) {
         var winWidth = divCanvas.clientWidth;
         var winHeight = Math.floor(getWindowHeight() * 0.95);
-        if (divCanvas.style.height.length > 0) {
-            winHeight = divCanvas.clientHeight;
+        if (divCanvas.className == "c4-fixed-height") {
+            if (getWindowWidth() > 768) {
+                winHeight = Math.min(divCanvas.clientHeight, winHeight);
+            }
+            else {
+                winHeight = Math.min(winHeight, 500);
+            }
         }
         if ((winHeight > 0) && (winWidth / winHeight > aspectRatio)) {
             canvas.width = Math.floor(winHeight * aspectRatio);
@@ -204,16 +214,32 @@ var Connect4BoardUI;
             return -1;
         }
     }
+    function getWindowWidth() {
+        if (typeof (window.innerWidth) == 'number') {
+            return window.innerWidth;
+        }
+        else if (document.documentElement && document.documentElement.clientWidth) {
+            return document.documentElement.clientWidth;
+        }
+        else if (document.body && document.body.clientWidth) {
+            return document.body.clientWidth;
+        }
+        else {
+            return -1;
+        }
+    }
     function translateMouseCoordinates(event) {
         var mouseX = event.clientX - canvas.getBoundingClientRect().left;
         var mouseY = event.clientY - canvas.getBoundingClientRect().top;
         return {
             x: mouseX - (canvas.width - boardWidth) / 2,
-            y: mouseY - ((canvas.height / (Connect4Board.numRows + 1)) + ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2)
+            y: mouseY - ((canvas.height / (Connect4Board.numRows + 1)) +
+                ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2)
         };
     }
     function translateCanvas() {
-        ctx.translate((canvas.width - boardWidth) / 2, (canvas.height / (Connect4Board.numRows + 1)) + ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2);
+        ctx.translate((canvas.width - boardWidth) / 2, (canvas.height / (Connect4Board.numRows + 1)) +
+            ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2);
     }
     function makeMove(col) {
         columnOfFallingPiece = col;
@@ -443,9 +469,6 @@ var Connect4BoardUI;
         else if (board.gameState == 5) {
             ctx.fillText("Draw", canvas.width / 2, -holeSpacing / 2);
         }
-        else {
-            console.log('processEndOfGame called, but board.gamestate does not match.');
-        }
         ctx.restore();
         enableControls(true);
         textOutputSpan.innerHTML = "";
@@ -491,7 +514,8 @@ var Connect4Board = (function () {
         return this.pieces[row * Connect4Board.numCols + column];
     };
     Connect4Board.prototype.makeMove = function (column) {
-        this.pieces[this.colHeight[column] * Connect4Board.numCols + column] = (this.turnsCompleted % 2) ? 1 : 0;
+        this.pieces[this.colHeight[column] * Connect4Board.numCols + column] =
+            (this.turnsCompleted % 2) ? 1 : 0;
         this.colHeight[column] += 1;
         this.turnsCompleted++;
         if (this.turnsCompleted >= Connect4Board.threshold * 2 - 1) {
@@ -615,9 +639,8 @@ var MCTS;
     var startTime;
     var processingInterval = 25;
     var timeoutHandle;
-    var playout_counter = 0;
-    var gameStartTime;
     MCTS.maxNodes = 100000;
+    var c_sub_p = 8;
     function start(board) {
         rootNode = new Node(new Connect4Board(board), null);
         MCTS.simulationState = 0;
@@ -627,8 +650,6 @@ var MCTS;
     function resume() {
         if (MCTS.simulationState != 2) {
             MCTS.simulationState = 1;
-            gameStartTime = Date.now();
-            playout_counter = 0;
             execute();
         }
     }
@@ -668,16 +689,11 @@ var MCTS;
     }
     MCTS.getProcessingPct = getProcessingPct;
     function execute() {
-        if (MCTS.simulationState != 1) {
-            console.log('execute called while not running');
-            return;
-        }
         startTime = Date.now();
         var currNode;
         while ((Date.now() < startTime + processingInterval) &&
             (rootNode.numChildren < MCTS.maxNodes) &&
             (rootNode.timesVisted - rootNode.numChildren < MCTS.maxNodes * 10)) {
-            playout_counter++;
             currNode = getNodeToTest(rootNode);
             updateStats(currNode, simulate(currNode));
         }
@@ -740,13 +756,12 @@ var MCTS;
             if (!(currChild = curr.child[index]))
                 break;
             if (curr.board.gameState == 0) {
-                currValue = (currChild.numP1Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);
+                currValue = (currChild.numP1Wins + currChild.numDraws * drawWeight) / currChild.timesVisted +
+                    cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);
             }
             else if (curr.board.gameState == 1) {
-                currValue = (currChild.numP2Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);
-            }
-            else {
-                alert('error -- bestchild is looking for children of board that is in a terminal state!  This code should be unreachable');
+                currValue = (currChild.numP2Wins + currChild.numDraws * drawWeight) / currChild.timesVisted +
+                    cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);
             }
             if ((currValue > maxValue) || (currValue == maxValue && Math.random() < 0.5)) {
                 maxValue = currValue;
@@ -781,14 +796,10 @@ var MCTS;
             else if (endState == 5) {
                 curr.numDraws += 1;
             }
-            else {
-                console.log('in MCTS.updateStats -- reached code that never should have been reached');
-            }
             curr.timesVisted += 1;
             curr = curr.parent;
         }
     }
-    var c_sub_p = 8;
     var Node = (function () {
         function Node(board, parent) {
             this.numP1Wins = 0;

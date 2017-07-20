@@ -1,17 +1,22 @@
-﻿const enum Space {Empty=-1,Player1=0,Player2=1}
-const enum GameStates {Player1sTurn=0, Player2sTurn=1,Player1Wins=3, Player2Wins=4, Draw=5}
+﻿/* ****************************************************************************
+Each Connect4Board object represents a possible state of connect 4 play, including
+the location of every piece in the board, whose turn it is, and whether the game
+is in progress or is a win, loss, or draw.
+******************************************************************************** */
 
+const enum Space {Empty=-1,Player1=0,Player2=1}
+const enum GameStates {Player1sTurn=0, Player2sTurn=1,Player1Wins=3, Player2Wins=4, Draw=5}
 
 class Connect4Board {
     private pieces: number[]; //pieces[row * NumCols + column] = Space.Empty, .Player1, or .Player2
-    colHeight: number[]; //number of pieces in the column <-- consider if can eliminate since have availableMoves array now.
+    colHeight: number[]; //number of pieces in the column
     turnsCompleted: number = 0;
     gameState: GameStates = GameStates.Player1sTurn;
     availableMoves: number[];
 
-    static numRows: number;// = 6;
-    static numCols: number;// = 7;
-    static threshold: number;// = 4; //threshold is number of pieces need to connect to win (usually 4)
+    static numRows: number;// usually 6;
+    static numCols: number;// usually 7;
+    static threshold: number;// usually 4; //threshold is number of pieces you need to connect to win
 
     constructor(src?: Connect4Board, nextMove?:number) {
         if (!src) {
@@ -51,8 +56,9 @@ class Connect4Board {
     }
 
     makeMove(column: number): void {
-                    //this.colHeigh[column] is to row where the piece will be
-        this.pieces[this.colHeight[column] * Connect4Board.numCols + column] = (this.turnsCompleted % 2) ? Space.Player2 : Space.Player1;
+                    //this.colHeigh[column] is the row where the piece will be
+        this.pieces[this.colHeight[column] * Connect4Board.numCols + column] =
+            (this.turnsCompleted % 2) ? Space.Player2 : Space.Player1;
         this.colHeight[column] += 1;
         this.turnsCompleted++;
 

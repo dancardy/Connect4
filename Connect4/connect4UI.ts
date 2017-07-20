@@ -1,4 +1,11 @@
-﻿window.onload = () => {
+﻿/* ****************************************************************************
+The UI draws maintains a Connect4Board object that represents the current state
+of play.  It draws this board to the screen, and allows users to drop pieces.
+It uses the MCTS module to select the computer's moves.  The UI relies on the 
+presence of the each html elements in index.html that has an id specified.
+******************************************************************************** */
+
+window.onload = () => {
     Connect4BoardUI.init();
 }; 
 
@@ -37,11 +44,6 @@ module Connect4BoardUI {
 
 
     export function init(): void {
-        //debugSpan = <HTMLSpanElement>document.querySelector("#debugspan");
-        //above is temporary, below should be kept.
-
-        textOutputSpan = <HTMLSpanElement>document.querySelector("#textOutputSpan");
-
         newGameBtn = <HTMLButtonElement>document.querySelector("#newGameBtn");
         newGameBtn.addEventListener('click', newGameBtnPressed);
 
@@ -67,9 +69,14 @@ module Connect4BoardUI {
         connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
         connectNumSlider.addEventListener('change', changeConnectNum);
 
+        textOutputSpan = <HTMLSpanElement>document.querySelector("#textOutputSpan");
+
         resetSliderValues();
 
-        window.addEventListener('resize', function () { resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1)) }, false);
+        window.addEventListener('resize', function () { 
+            resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1))
+         }, false);
+
         initBoard();
     }
 
@@ -81,8 +88,9 @@ module Connect4BoardUI {
         AI_Player_Max_Wait = parseInt(document.getElementById("processingTimeValue").innerHTML)*1000;
         
         var targetDepth : number = parseFloat(document.getElementById("difficultyValue").innerHTML);
-        //Use Finite Geometric series summation [that sum from n=0 to N of r^n = (1-r^(N+1))/(1-r) ], to set maxNodes to a number that
-        // approximates the tree depth received from getMaxDepth;  This is the max depth if the tree were full; in reality it will be a little more.
+
+        //Use Finite Geometric series summation [that sum from n=0 to N of r^n = (1-r^(N+1))/(1-r) ], to set maxNodes
+        //to a number that approximates the targetDepth (this would be the real depth if the tree were full)
         MCTS.maxNodes = (1-Math.pow(Connect4Board.numCols,targetDepth+1))/(1-Connect4Board.numCols);
        
         board = new Connect4Board();
@@ -211,10 +219,10 @@ module Connect4BoardUI {
         var winHeight: number = Math.floor(getWindowHeight() * 0.95); //set initial height to viewport
         
         if (divCanvas.className == "c4-fixed-height") {
-            //if height is set by the c4-fixed-height class, let the Div's fixed-height set maximum Height
-            if (getWindowWidth() > 768) {//divCanvas sets a height at this screen width
+            //Let divCanvas's fixed-height set maximum Height
+            if (getWindowWidth() > 768) {
                 winHeight = Math.min(divCanvas.clientHeight, winHeight); 
-            } else {//divCanvas doesn't set a height at this screen width, but set a cap so it doesn't jump up 
+            } else {//divCanvas doesn't set a height at this screen width, but set a cap to avoid jumps in size 
                 winHeight = Math.min(winHeight, 500); 
             }
         }        
@@ -265,14 +273,17 @@ module Connect4BoardUI {
         var mouseY: number = event.clientY - canvas.getBoundingClientRect().top;
         return { //below translates to coordinates where 0,0 is top left corner of the board
             x: mouseX - (canvas.width - boardWidth) / 2,
-            y: mouseY - ((canvas.height / (Connect4Board.numRows + 1)) + ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2)
+            y: mouseY - ((canvas.height / (Connect4Board.numRows + 1)) + 
+                ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2)
         };
     }
 
     //leaves canvas height/(numRows+1) at top of convas, and then centers the range between boardwidth/height and canvas width/height within the remaining space.
     //Result is that (0,0) is at top left corner of where want to draw board. 
     function translateCanvas(): void {
-        ctx.translate((canvas.width - boardWidth) / 2, (canvas.height / (Connect4Board.numRows + 1)) + ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2);
+        ctx.translate((canvas.width - boardWidth) / 2, 
+                        (canvas.height / (Connect4Board.numRows + 1)) + 
+                        ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2);
     }
 
     function makeMove(col: number): void {
@@ -338,7 +349,7 @@ module Connect4BoardUI {
     var thinkingIndicated : boolean = false;
     var cutofftime : number;
     function playAIMove(): void {
-        //if player asks the computer to play for it
+        //if player asks the computer to play for it (functionality currently removed)
         if ((board.gameState == GameStates.Player2sTurn && AI_Player == 0) || (board.gameState == GameStates.Player1sTurn && AI_Player == 1)) {
             var move = MCTS.getRecommendedMove()
             if (move != null) {
@@ -543,8 +554,6 @@ module Connect4BoardUI {
             ctx.fillText("You Lost", canvas.width / 2, -holeSpacing / 2);
         } else if (board.gameState == GameStates.Draw) {
             ctx.fillText("Draw", canvas.width / 2, -holeSpacing / 2);
-        } else {
-            console.log('processEndOfGame called, but board.gamestate does not match.');
         }
         ctx.restore();
         enableControls(true);
