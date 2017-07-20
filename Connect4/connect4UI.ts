@@ -67,6 +67,8 @@ module Connect4BoardUI {
         connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
         connectNumSlider.addEventListener('change', changeConnectNum);
 
+        resetSliderValues();
+
         window.addEventListener('resize', function () { resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1)) }, false);
         initBoard();
     }
@@ -182,20 +184,23 @@ module Connect4BoardUI {
         }
     }
 
+    function resetSliderValues() {
+        difficultySlider.value = "6"
+        document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(parseInt(difficultySlider.value));
+        widthSlider.value = "7";
+        document.getElementById("widthValue").innerHTML = widthSlider.value;
+        heightSlider.value = "6";
+        document.getElementById("heightValue").innerHTML = heightSlider.value;
+        processingTimeSlider.value = "10";
+        document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
+        connectNumSlider.value = "4";
+        document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+    }
+
     function newGameBtnPressed():void {
         MCTS.stop();
         if (newGameBtn.innerText == "Restore Defaults") {
-            MCTS.stop();
-            difficultySlider.value = "6"
-            document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(parseInt(difficultySlider.value));
-            widthSlider.value = "7";
-            document.getElementById("widthValue").innerHTML = widthSlider.value;
-            heightSlider.value = "6";
-            document.getElementById("heightValue").innerHTML = heightSlider.value;
-            processingTimeSlider.value = "10";
-            document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
-            connectNumSlider.value = "4";
-            document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+            resetSliderValues();
         }
         initBoard();
     }
@@ -206,10 +211,13 @@ module Connect4BoardUI {
         var winHeight: number = Math.floor(getWindowHeight() * 0.95); //set initial height to viewport
         
         if (divCanvas.className == "c4-fixed-height") {
-            //if height is set by the c4-fixed-height class, let that height control instead of the window's height
-            winHeight = divCanvas.clientHeight;
-        }
-                
+            //if height is set by the c4-fixed-height class, let the Div's fixed-height set maximum Height
+            if (getWindowWidth() > 768) {//divCanvas sets a height at this screen width
+                winHeight = Math.min(divCanvas.clientHeight, winHeight); 
+            } else {//divCanvas doesn't set a height at this screen width, but set a cap so it doesn't jump up 
+                winHeight = Math.min(winHeight, 500); 
+            }
+        }        
 
         if ((winHeight > 0) && (winWidth / winHeight > aspectRatio)) { //if limiting dimension is height
             canvas.width = Math.floor(winHeight * aspectRatio);
@@ -240,7 +248,17 @@ module Connect4BoardUI {
             return -1
         }
     }
-
+    function getWindowWidth(): number {
+        if (typeof (window.innerWidth) == 'number') {
+            return window.innerWidth; //this should be the return for nearly all browsers.
+        } else if (document.documentElement && document.documentElement.clientWidth) {
+            return document.documentElement.clientWidth;
+        } else if (document.body && document.body.clientWidth) {
+            return document.body.clientWidth;
+        } else {
+            return -1
+        }
+    }
 
     function translateMouseCoordinates(event: MouseEvent): { x: number, y: number } {
         var mouseX: number = event.clientX - canvas.getBoundingClientRect().left; //mouseX&Y is now position over canvas.

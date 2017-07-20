@@ -22,11 +22,18 @@
 
         #connect4MainCanvasDiv {
             margin-bottom: 1rem;
-            border: 1px solid red;
         }
-        #connect4MainCanvasDiv.c4-fixed-height {
-            height:500px;
+
+            #connect4MainCanvasDiv.c4-fixed-height {
+                height: 500px;
+            }
+
+        @media screen and (max-width: 768px) {
+            #connect4MainCanvasDiv.c4-fixed-height {
+                height: auto;
+            }
         }
+
         #connect4MainCanvas {
             display: block;
             border: 1px solid black;
@@ -36,7 +43,6 @@
         #connect4Controls {
             text-align: center;
             font-size: 0.95rem;
-            border: 1px solid black;
         }
 
         input[type=range] {
@@ -57,35 +63,77 @@
             line-height: inherit;
             color: black;
         }
+
+        .table-container {
+            display: table;
+            margin: auto;
+        }
+
+        .table-row {
+            display: table-row;
+        }
+
+        .table-cell {
+            display: table-cell;
+        }
+
+        .table-row:last-of-type .table-cell {
+            border-bottom-style: none;
+        }
+
+        #textOutputSpan,
+        #processingTimeLabel,
+        #processingTimeValue,
+        #processingTime-s,
+        #processingTime {
+            display: none;
+        }
     </style>
     <div id="connect4MainCanvasDiv" class="c4-fixed-height">
         <canvas id="connect4MainCanvas" width="450" height="450">This webapp is not supported/enabled by your browser.  Please enable javascript and use a browser that supports HTML5 (such as Chrome, Safari, Firefox, Internet Explorer, etc.)</canvas>
     </div>
     <div id="connect4Controls">
         <button id="newGameBtn">Restore Defaults</button><br /><br />
-        <label id="difficultyLabel" for="difficulty">Difficulty:</label>
-        <output id="difficultyValue">5</output>
-        <input type="range" id="difficulty" min=2 max=9 value=6>
-        <br />
+        <div class="table-container">
+            <span class="table-row">
+                <span class="table-cell">
+                    <label id="difficultyLabel" for="difficulty">Difficulty:</label>
+                    <output id="difficultyValue">5</output>
+                </span><span class="table-cell">
+                    <input type="range" id="difficulty" min=2 max=9 value=6>
+                </span>
+            </span>
+            <span class="table-row">
+                <span class="table-cell">
+                    <label id="boardWidthLabel" for="boardWidth">Board Width:</label>
+                    <output id="widthValue">7</output>
+                </span><span class="table-cell">
+                    <input type="range" id="boardWidth" min=5 max=9 value=7>
+                </span>
+            </span>
+            <span class="table-row">
+                <span class="table-cell">
+                    <label id="boardHeightLabel" for="boardHeight">Board Height:</label>
+                    <output id="heightValue">6</output>
+                </span><span class="table-cell">
+                    <input type="range" id="boardHeight" min=5 max=9 value=6>
+                </span>
+            </span>
+            <span class="table-row">
+                <span class="table-cell">
+                    <label id="connectNumLabel" for="connectNum">Number to connect:</label>
+                    <output id="connectNumValue">4</output>
+                </span><span class="table-cell">
+                    <input type="range" id="connectNum" min=3 max=5 value=4>
+                </span>
+            </span>
+        </div>
         <label id="processingTimeLabel" for="processingTime">Opponent's Max Thinking Time:</label>
-        <output id="processingTimeValue">10</output><span>s</span>
+        <output id="processingTimeValue">10</output><span id="processingTime-s">s</span>
         <input type="range" id="processingTime" min=2 max=120 value=10>
-        <br />
-        <span id="textOutputSpan"></span><br />
-        <br />
-        <label id="boardWidthLabel" for="boardWidth">Board Width:</label>
-        <output id="widthValue">7</output>
-        <input type="range" id="boardWidth" min=5 max=9 value=7>
-        <br />
-        <label id="boardHeightLabel" for="boardHeight">Board Height:</label>
-        <output id="heightValue">6</output>
-        <input type="range" id="boardHeight" min=5 max=9 value=6>
-        <br />
-        <label id="connectNumLabel" for="connectNum">Number to connect:</label>
-        <output id="connectNumValue">4</output>
-        <input type="range" id="connectNum" min=3 max=5 value=4>
-        <br />
+        <br /><span id="textOutputSpan"></span><br /><br />
     </div>
+
 
     <!--
     <div>
