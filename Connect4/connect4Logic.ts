@@ -7,7 +7,7 @@ is in progress or is a win, loss, or draw.
 const enum Space {Empty=-1,Player1=0,Player2=1}
 const enum GameStates {Player1sTurn=0, Player2sTurn=1,Player1Wins=3, Player2Wins=4, Draw=5}
 
-class Connect4Board {
+class Connect4Board implements MCTS.Board {
     private pieces: number[]; //pieces[row * NumCols + column] = Space.Empty, .Player1, or .Player2
     colHeight: number[]; //number of pieces in the column
     turnsCompleted: number = 0;

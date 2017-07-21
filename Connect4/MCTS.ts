@@ -9,9 +9,27 @@ represents a possible next move.  The value associated with each move that is
 calculated by the monte carlo simulations is negated at each subsequent level of
 the tree (consistent with negamax-style algoithms) to reflect that the best results
 for player one are the worst results for player two.
+
+This Module will work with any game logic that implements the Board interface
+and provides the constructor indicated immediately below.
 **************************************************************************** */
 
 module MCTS {
+    export interface Board {
+        availableMoves: number[];
+        gameState: GameStates;
+        makeMove(moveNum: number): void;
+    }
+    //The Constructor signature for Board is: constructor(src ?: Connect4Board, nextMove ?:number)
+    //The constructor must: 
+    //(1) construct an empty board when no arguments are passed
+    //(2) construct a copy when another Board is passed as the first parameter
+    //(3) perform nextMove on the copy when nextMove is passed
+    //Although TypeScript does support constructor interfaces, one is not used here
+    //because TypeScript won't enforce these requirements (including the signature requirement) 
+
+    var boardClass: any; //the specific class of the Board to be used. (e.g. Connect4Board)
+
     var rootNode: Node;
     var startTime: number;
     var processingInterval: number = 25; //how long execute() blocks waiting scripts from running
@@ -26,8 +44,9 @@ module MCTS {
     export const enum States { Paused = 0, Running = 1, Stopped = 2}
     export var simulationState: States;
     
-    export function start(board: Connect4Board): void {
-        rootNode = new Node(new Connect4Board(board), null);
+    export function start(board: Board, boardClassName:any): void {
+        boardClass = boardClassName;
+        rootNode = new Node(new boardClass(board), null);
         simulationState = States.Paused;
         resume();
     }
@@ -108,7 +127,7 @@ module MCTS {
             rootNode.parent = null;
         } else {
             //child node hasn't been created yet, so we are essentially starting again from scratch.
-            rootNode = new Node(new Connect4Board(rootNode.board, move), null);
+            rootNode = new Node(new boardClass(rootNode.board, move), null);
         }
         if (rootNode.board.gameState != GameStates.Player1sTurn && rootNode.board.gameState != GameStates.Player2sTurn) {
             stop();
@@ -132,7 +151,7 @@ module MCTS {
             for (index = 0; index < curr.board.availableMoves.length; index++) {
                 if (!curr.child[index]) {
                     //if a child that can exist doesn't yet exist, we create the child and return it to be tested.
-                    curr.child[index] = new Node(new Connect4Board(curr.board, curr.board.availableMoves[index]), curr);
+                    curr.child[index] = new Node(new boardClass(curr.board, curr.board.availableMoves[index]), curr);
                     incrementNumChildren(curr);
                     return curr.child[index];
                 }
@@ -172,7 +191,7 @@ module MCTS {
     //returns a GameState based on random game play if node represents an in-progress game; else returns resolution of game
     function simulate(node: Node): GameStates {
         if (node.board.gameState == GameStates.Player1sTurn || node.board.gameState == GameStates.Player2sTurn) {
-            var board: Connect4Board = new Connect4Board(node.board);
+            var board: Board = new boardClass(node.board);
             var moveIndex: number;
             while (board.gameState == GameStates.Player1sTurn || board.gameState == GameStates.Player2sTurn) {
                 moveIndex = Math.floor(Math.random() * board.availableMoves.length); //move randomly.
@@ -207,12 +226,12 @@ module MCTS {
         numDraws: number = 0;
         timesVisted: number = 0;
         numChildren: number = 0;
-        board: Connect4Board;
+        board: Board;
 
         parent: Node;
         child: Node[];
 
-        constructor(board: Connect4Board, parent: Node) {
+        constructor(board: Board, parent: Node) {
             this.board = board;
             this.parent = parent;
             (this.child = []).length = board.availableMoves.length;

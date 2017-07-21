@@ -94,7 +94,7 @@ module Connect4BoardUI {
         MCTS.maxNodes = (1-Math.pow(Connect4Board.numCols,targetDepth+1))/(1-Connect4Board.numCols);
        
         board = new Connect4Board();
-        MCTS.start(board);
+        MCTS.start(board, Connect4Board);
             
         resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1));
         enableControls(true);

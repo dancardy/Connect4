@@ -41,7 +41,9 @@
 input[type=range] {
     display: inline;
     width: auto;
+    min-width: 100px;
     margin-left: 0.5rem;
+    padding:0;
 }
 
 label {
