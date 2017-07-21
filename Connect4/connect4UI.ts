@@ -87,12 +87,13 @@ module Connect4BoardUI {
         AI_Player = 1;
         AI_Player_Max_Wait = parseInt(document.getElementById("processingTimeValue").innerHTML)*1000;
         
-        var targetDepth : number = parseFloat(document.getElementById("difficultyValue").innerHTML);
+        var targetDepth: number = getDepthTarget(parseInt(document.getElementById("difficultyValue").innerHTML));
 
         //Use Finite Geometric series summation [that sum from n=0 to N of r^n = (1-r^(N+1))/(1-r) ], to set maxNodes
         //to a number that approximates the targetDepth (this would be the real depth if the tree were full)
-        MCTS.maxNodes = (1-Math.pow(Connect4Board.numCols,targetDepth+1))/(1-Connect4Board.numCols);
-       
+        MCTS.maxNodes = Math.min(300000, (1 - Math.pow(Connect4Board.numCols, targetDepth + 1)) / (1 - Connect4Board.numCols));
+        //Math.min used to avoid using too much memory (it slightly curtails the depth for the widest board sizes at highest difficulty)
+
         board = new Connect4Board();
         MCTS.start(board, Connect4Board);
             
@@ -143,14 +144,13 @@ module Connect4BoardUI {
     function getDepthTarget(difficulty: number): number {
         if (difficulty <= 0) return 1;
         switch (difficulty) {
-            case 1: return 1;
-            case 2: return 2;
-            case 3: return 3;
-            case 4: return 4;
-            case 5: return 4.5;
-            case 6: return 5;
-            case 7: return 5.5;
-            case 8: return 6;
+            case 1: return 2;
+            case 2: return 3;
+            case 3: return 4;
+            case 4: return 4.5;
+            case 5: return 5;
+            case 6: return 5.5;
+            case 7: return 6.4;
             default: return 6.5;
         }   
     }
@@ -178,8 +178,8 @@ module Connect4BoardUI {
 
     function changeDifficulty(event: any): void {
         MCTS.stop();
-        var difficultyNum: number = parseInt(event.target.value);
-        document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(difficultyNum);
+        var difficultyNum: any = parseInt(event.target.value);
+        document.getElementById("difficultyValue").innerHTML = difficultyNum;
         initBoard();
     }
 
@@ -193,8 +193,8 @@ module Connect4BoardUI {
     }
 
     function resetSliderValues() {
-        difficultySlider.value = "6"
-        document.getElementById("difficultyValue").innerHTML = <any>getDepthTarget(parseInt(difficultySlider.value));
+        difficultySlider.value = "5"
+        document.getElementById("difficultyValue").innerHTML = difficultySlider.value;
         widthSlider.value = "7";
         document.getElementById("widthValue").innerHTML = widthSlider.value;
         heightSlider.value = "6";
