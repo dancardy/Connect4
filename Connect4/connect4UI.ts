@@ -1,5 +1,5 @@
 ﻿/* ****************************************************************************
-The UI draws maintains a Connect4Board object that represents the current state
+The UI maintains a Connect4Board object that represents the current state
 of play.  It draws this board to the screen, and allows users to drop pieces.
 It uses the MCTS module to select the computer's moves.  The UI relies on the 
 presence of the each html elements in index.html that has an id specified.
@@ -27,6 +27,8 @@ module Connect4BoardUI {
     var animationRequestID: number = null; //null when not animating
     var timeOfLastFrameDraw: number = 0;
     var firstCallToAnimationLoop: boolean = false;
+    var timeToDropPiece: number;
+    const timeBeforeAIPieceDrops: number = 250;
     var unprocessedMouseMoveEvent: MouseEvent = null;
     
     //Gameplay controls
@@ -141,6 +143,8 @@ module Connect4BoardUI {
         controlsEnabledNow = enable;
     }
 
+    //maps an integer difficulty number (from the difficulty slider)
+    //to a target tree depth; here, a single node has depth 1
     function getDepthTarget(difficulty: number): number {
         if (difficulty <= 0) return 1;
         switch (difficulty) {
@@ -256,6 +260,7 @@ module Connect4BoardUI {
             return -1
         }
     }
+
     function getWindowWidth(): number {
         if (typeof (window.innerWidth) == 'number') {
             return window.innerWidth; //this should be the return for nearly all browsers.
@@ -349,17 +354,6 @@ module Connect4BoardUI {
     var thinkingIndicated : boolean = false;
     var cutofftime : number;
     function playAIMove(): void {
-        //if player asks the computer to play for it (functionality currently removed)
-        if ((board.gameState == GameStates.Player2sTurn && AI_Player == 0) || (board.gameState == GameStates.Player1sTurn && AI_Player == 1)) {
-            var move = MCTS.getRecommendedMove()
-            if (move != null) {
-                makeMove(move);
-            } else {
-                console.log("when player asked computer to play for it, move could not be processed because MCTS could not recommend a move");
-            }
-            return;
-        }
-        
         if (MCTS.simulationState == MCTS.States.Running) {
             if (!thinkingIndicated) {
                 ctx.save();
@@ -379,11 +373,13 @@ module Connect4BoardUI {
             } else {
                 thinkingIndicated = false;
                 textOutputSpan.innerHTML = "Max thinking time was reached.  Processing was about " + MCTS.getProcessingPct() + "% done.";
+                timeToDropPiece = Date.now() + timeBeforeAIPieceDrops;
                 makeMove(MCTS.getRecommendedMove());
             }
         } else { //MCTS paused itself.
             thinkingIndicated = false;
             textOutputSpan.innerHTML = "";
+            timeToDropPiece = Date.now() + timeBeforeAIPieceDrops;
             makeMove(MCTS.getRecommendedMove());
         }
     }
@@ -424,54 +420,55 @@ module Connect4BoardUI {
 
     function animateFallingPiece(timestamp: number): void {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         var finalY: number = boardHeight - holeSpacing / 2 - board.colHeight[columnOfFallingPiece] * holeSpacing;
-
         var timeSinceLastFrameDraw: number = timestamp - timeOfLastFrameDraw;
         timeOfLastFrameDraw = timestamp;
 
         var yDropTime: number = 400; //time in ms it takes to traverse the board
-        var yIncrement: number = (firstCallToAnimationLoop) ? 0 : boardHeight * timeSinceLastFrameDraw / yDropTime;
+        var yIncrement: number = (firstCallToAnimationLoop || Date.now() < timeToDropPiece) ? 0 : boardHeight * timeSinceLastFrameDraw / yDropTime;
         currentYofFallingPiece += yIncrement;
     
-        // call again to draw next frame
         if (currentYofFallingPiece < finalY) {
             //draw falling gamepiece.
             drawSingleLoosePiece(columnOfFallingPiece);
-
             drawBoard();
         
             firstCallToAnimationLoop = false;
+            //draw next frame (by calling this function again)
             animationRequestID = requestAnimationFrame(animateFallingPiece);
         } else {
+            //piece has reached bottom
             if (animationRequestID) {
                 cancelAnimationFrame(animationRequestID);
                 animationRequestID = null;
+            }
 
-                board.makeMove(columnOfFallingPiece);
+            board.makeMove(columnOfFallingPiece);
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawBoard();
-                
-                if (board.gameState == GameStates.Player1sTurn || board.gameState == GameStates.Player2sTurn) {
-                    //now that animation is finished, prepare for next move
-                    if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
-                        setTimeout(function () { MCTS.resume(); playAIMove(); },5);
-                    } else { //show new piece ready to drop for human players
-                        if (unprocessedMouseMoveEvent) {
-                            processMouseMove(unprocessedMouseMoveEvent);
-                        } else {
-                            currentYofFallingPiece = -holeSpacing / 2;
-                            drawSingleLoosePiece(columnOfFallingPiece);
-                        }
-                        //restart MCTS solver, which was paused during animation; 
-                        //the 5 ms delay and the use of an anonymous function required to avoid stutter in the piece drop animation in some browsers. 
-                        setTimeout(function () { MCTS.resume(); },5);
+            ctx.clearRect(0, 0, canvas.width, canvas.height); //clear area above screen
+            drawBoard();
+            
+            if (board.gameState == GameStates.Player1sTurn || board.gameState == GameStates.Player2sTurn) {
+                //now that animation is finished, prepare for next move
+                if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
+                    setTimeout(function () { 
+                        MCTS.resume(); 
+                        playAIMove(); 
+                    },5);
+                } else { //show new piece ready to drop for human players
+                    if (unprocessedMouseMoveEvent) {
+                        processMouseMove(unprocessedMouseMoveEvent);
+                    } else {
+                        currentYofFallingPiece = -holeSpacing / 2;
+                        columnOfFallingPiece = Math.floor((Connect4Board.numCols-1)/2); 
+                        drawSingleLoosePiece(columnOfFallingPiece);
                     }
-                    
-                } else {
-                    processEndOfGame();
+                    //restart MCTS solver, which was paused during animation; 
+                    //the 5 ms delay and the use of an anonymous function required to avoid stutter in the piece drop animation in some browsers. 
+                    setTimeout(function () { MCTS.resume(); },5);
                 }
+            } else {
+                processEndOfGame();
             }
         }
     }
@@ -535,7 +532,6 @@ module Connect4BoardUI {
             }
         }
         ctx.stroke();
-
         ctx.restore();
     }
 

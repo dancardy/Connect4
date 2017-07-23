@@ -10,7 +10,7 @@ calculated by the monte carlo simulations is negated at each subsequent level of
 the tree (consistent with negamax-style algoithms) to reflect that the best results
 for player one are the worst results for player two.
 
-This Module will work with any game logic that implements the Board interface
+This Module will work with any game logic that implements the MCTS.Board interface
 and provides the constructor indicated immediately below.
 **************************************************************************** */
 

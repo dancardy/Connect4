@@ -1,8 +1,4 @@
-﻿body {
-    font-family: 'Segoe UI', sans-serif;
-}
-
-#difficultyLabel.grayed,
+﻿#difficultyLabel.grayed,
 #difficultyValue.grayed,
 #boardWidthLabel.grayed,
 #widthValue.grayed,
@@ -40,15 +36,12 @@
 
 input[type=range] {
     display: inline;
-    width: auto;
     min-width: 100px;
-    margin-left: 0.5rem;
     padding:0;
 }
 
 label {
     display: inline;
-    margin: 0;
     font-weight: normal;
 }
 
@@ -71,7 +64,9 @@ output {
 .table-cell {
     display: table-cell;
 }
-
+.padding-left {
+    padding-left: 0.5rem;
+}
 .table-row:last-of-type .table-cell {
     border-bottom-style: none;
 }
