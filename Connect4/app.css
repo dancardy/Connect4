@@ -56,6 +56,7 @@ output {
 
 .table-cell {
     display: table-cell;
+    text-align:left;
 }
 .padding-left {
     padding-left: 0.5rem;
