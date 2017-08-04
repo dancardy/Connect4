@@ -52,7 +52,7 @@ module MCTS {
     }
     
     export function resume() :void {
-        if (simulationState != States.Stopped) {
+        if (simulationState == States.Paused) {
             simulationState = States.Running;
             execute();
         }
