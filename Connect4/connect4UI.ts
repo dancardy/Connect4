@@ -9,6 +9,7 @@ window.onload = () => {
     Connect4BoardUI.init();
 }; 
 
+
 module Connect4BoardUI {
     //variables that describe the game board
     var canvas: HTMLCanvasElement;
@@ -27,7 +28,7 @@ module Connect4BoardUI {
     var animationRequestID: number = null; //null when not animating
     var timeOfLastFrameDraw: number = 0;
     var firstCallToAnimationLoop: boolean = false;
-    var timeToDropPiece: number;
+    var timeToDropPiece: number = 0;
     const timeBeforeAIPieceDrops: number = 250;
     var unprocessedMouseMoveEvent: MouseEvent = null;
     
@@ -82,6 +83,7 @@ module Connect4BoardUI {
         initBoard();
     }
 
+
     function initBoard(): void {
         Connect4Board.numRows = parseInt(document.getElementById("heightValue").innerHTML);
         Connect4Board.numCols = parseInt(document.getElementById("widthValue").innerHTML);
@@ -91,10 +93,10 @@ module Connect4BoardUI {
         
         var targetDepth: number = getDepthTarget(parseInt(document.getElementById("difficultyValue").innerHTML));
 
-        //Use Finite Geometric series summation [that sum from n=0 to N of r^n = (1-r^(N+1))/(1-r) ], to set maxNodes
-        //to a number that approximates the targetDepth (this would be the real depth if the tree were full)
+        // Set maxNodes to a number that approximates targetDepth (it would be the real depth if the tree were full)
+        // Formula comes from finite geometric series summation [that sum from n= 0 to N of r^ n = (1 - r ^ (N + 1)) / (1 - r) ]
         MCTS.maxNodes = Math.min(300000, (1 - Math.pow(Connect4Board.numCols, targetDepth + 1)) / (1 - Connect4Board.numCols));
-        //Math.min used to avoid using too much memory (it slightly curtails the depth for the widest board sizes at highest difficulty)
+        //Math.min used above to avoid using too much memory with wide boards and high difficulty
 
         board = new Connect4Board();
         MCTS.start(board, Connect4Board);
@@ -102,6 +104,7 @@ module Connect4BoardUI {
         resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1));
         enableControls(true);
     }
+
 
     var controlsEnabledNow:boolean = true;
     function enableControls(enable:boolean) :void {
@@ -143,6 +146,7 @@ module Connect4BoardUI {
         controlsEnabledNow = enable;
     }
 
+
     //maps an integer difficulty number (from the difficulty slider)
     //to a target tree depth; here, a single node has depth 1
     function getDepthTarget(difficulty: number): number {
@@ -159,12 +163,14 @@ module Connect4BoardUI {
         }   
     }
 
+
     function changeBoardWidth(event: any): void {
         MCTS.stop();
         var size: any = parseInt(event.target.value);
         document.getElementById("widthValue").innerHTML = size;
         initBoard();
     }
+
 
     function changeBoardHeight(event: any): void {
         MCTS.stop();
@@ -173,12 +179,14 @@ module Connect4BoardUI {
         initBoard();
     }
 
+
     function changeConnectNum(event: any): void {
         MCTS.stop();
         var num: any = parseInt(event.target.value);
         document.getElementById("connectNumValue").innerHTML = num;
         initBoard();
     }
+
 
     function changeDifficulty(event: any): void {
         MCTS.stop();
@@ -187,14 +195,17 @@ module Connect4BoardUI {
         initBoard();
     }
 
+
     function changeProcessingTime(event: any) :void {
         var time:any = parseInt(event.target.value)
         document.getElementById("processingTimeValue").innerHTML = time;
         AI_Player_Max_Wait = parseInt(time)*1000;
-        if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
+        if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) ||
+                (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
             textOutputSpan.innerHTML = "Change to Max Thinking Time will take effect on the next move.";
         }
     }
+
 
     function resetSliderValues() {
         difficultySlider.value = "5"
@@ -209,6 +220,7 @@ module Connect4BoardUI {
         document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
     }
 
+
     function newGameBtnPressed():void {
         MCTS.stop();
         if (newGameBtn.innerText == "Restore Defaults") {
@@ -217,7 +229,8 @@ module Connect4BoardUI {
         initBoard();
     }
 
-    //resizes the canvas so it fits in the window vertically and within its parent div horizontally, maintianing aspectRatio
+
+    //resizes the canvas so it fits in both the window and the parent div while maintianing aspectRatio
     function resizeCanvasAccordingToParentSize(aspectRatio: number): void {
         var winWidth: number = divCanvas.clientWidth;
         var winHeight: number = Math.floor(getWindowHeight() * 0.95); //set initial height to viewport
@@ -249,6 +262,7 @@ module Connect4BoardUI {
         drawBoard();
     }
 
+
     function getWindowHeight(): number {
         if (typeof (window.innerWidth) == 'number') {
             return window.innerHeight; //this should be the return for nearly all browsers.
@@ -260,6 +274,7 @@ module Connect4BoardUI {
             return -1
         }
     }
+
 
     function getWindowWidth(): number {
         if (typeof (window.innerWidth) == 'number') {
@@ -273,6 +288,7 @@ module Connect4BoardUI {
         }
     }
 
+
     function translateMouseCoordinates(event: MouseEvent): { x: number, y: number } {
         var mouseX: number = event.clientX - canvas.getBoundingClientRect().left; //mouseX&Y is now position over canvas.
         var mouseY: number = event.clientY - canvas.getBoundingClientRect().top;
@@ -283,6 +299,7 @@ module Connect4BoardUI {
         };
     }
 
+
     //leaves canvas height/(numRows+1) at top of convas, and then centers the range between boardwidth/height and canvas width/height within the remaining space.
     //Result is that (0,0) is at top left corner of where want to draw board. 
     function translateCanvas(): void {
@@ -290,6 +307,7 @@ module Connect4BoardUI {
                         (canvas.height / (Connect4Board.numRows + 1)) + 
                         ((canvas.height - canvas.height / (Connect4Board.numRows + 1)) - boardHeight) / 2);
     }
+
 
     function makeMove(col: number): void {
         columnOfFallingPiece = col;
@@ -302,6 +320,7 @@ module Connect4BoardUI {
         animationRequestID = requestAnimationFrame(animateFallingPiece);
         lastDrawnColumnOfHoveringPiece = -1; //doesn't match any column, so forces conclusion that we are in new column (and need to redraw) on next mouse move.
     }
+
 
     function processClick(event: MouseEvent): void {
         if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
@@ -324,6 +343,7 @@ module Connect4BoardUI {
         }
         textOutputSpan.innerHTML = "";
     }
+
 
     function processMouseMove(event: MouseEvent): void {
         if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
@@ -384,6 +404,7 @@ module Connect4BoardUI {
         }
     }
 
+
     //draws single loose piece at the height set by currentYofFallingPiece
     function drawSingleLoosePiece(column: number): void {
         ctx.save();
@@ -408,6 +429,7 @@ module Connect4BoardUI {
         ctx.restore();
     }
 
+
     function setShadow(): void {
         if (holeSpacing > 40) {
             ctx.shadowColor = 'black';
@@ -425,9 +447,10 @@ module Connect4BoardUI {
         timeOfLastFrameDraw = timestamp;
 
         var yDropTime: number = 400; //time in ms it takes to traverse the board
-        var yIncrement: number = (firstCallToAnimationLoop || Date.now() < timeToDropPiece) ? 0 : boardHeight * timeSinceLastFrameDraw / yDropTime;
-        currentYofFallingPiece += yIncrement;
-    
+        if ( !firstCallToAnimationLoop && (Date.now() >= timeToDropPiece) ) {
+            currentYofFallingPiece += boardHeight * timeSinceLastFrameDraw / yDropTime;
+        }
+                
         if (currentYofFallingPiece < finalY) {
             //draw falling gamepiece.
             drawSingleLoosePiece(columnOfFallingPiece);
@@ -450,7 +473,9 @@ module Connect4BoardUI {
             
             if (board.gameState == GameStates.Player1sTurn || board.gameState == GameStates.Player2sTurn) {
                 //now that animation is finished, prepare for next move
-                if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) || (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
+                if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) ||
+                    (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
+                    //it is the AI player's turn
                     setTimeout(function () { 
                         MCTS.resume(); 
                         playAIMove(); 
@@ -464,7 +489,8 @@ module Connect4BoardUI {
                         drawSingleLoosePiece(columnOfFallingPiece);
                     }
                     //restart MCTS solver, which was paused during animation; 
-                    //the 5 ms delay and the use of an anonymous function required to avoid stutter in the piece drop animation in some browsers. 
+                    //the 5 ms delay and the use of an anonymous function required to avoid stutter
+                    //in the piece drop animation in some browsers. 
                     setTimeout(function () { MCTS.resume(); },5);
                 }
             } else {

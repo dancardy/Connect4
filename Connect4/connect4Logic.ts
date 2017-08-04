@@ -66,7 +66,8 @@ class Connect4Board implements MCTS.Board {
             this.checkForThresholdInARow(column); //will change this.gameState if game has been won.
         }
 
-        if ((this.gameState == GameStates.Player1sTurn || this.gameState == GameStates.Player2sTurn) && (this.turnsCompleted == Connect4Board.numRows * Connect4Board.numCols)) {
+        if ((this.gameState == GameStates.Player1sTurn || this.gameState == GameStates.Player2sTurn) &&
+                               (this.turnsCompleted == Connect4Board.numRows * Connect4Board.numCols)) {
             this.gameState = GameStates.Draw;
         } else if (this.gameState == GameStates.Player1sTurn) {
             this.gameState = GameStates.Player2sTurn;

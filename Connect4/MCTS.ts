@@ -26,7 +26,7 @@ module MCTS {
     //(2) construct a copy when another Board is passed as the first parameter
     //(3) perform nextMove on the copy when nextMove is passed
     //Although TypeScript does support constructor interfaces, one is not used here
-    //because TypeScript won't enforce these requirements (including the signature requirement) 
+    //because TypeScript won't enforce constructor signatures with optional parameters
 
     var boardClass: any; //the specific class of the Board to be used. (e.g. Connect4Board)
 
@@ -36,9 +36,9 @@ module MCTS {
     var timeoutHandle: number;
     export var maxNodes: number = 100000;
 
-    //c_sup_p is the exploration factor.  it must be >0 for there to be exploration
-    //Math.SQRT1_2 is a common default for large trees, but set it higher here because
-    // otherwise small trees are more likely to miss obvious moves without extra exploration
+    // c_sup_p is the exploration factor.  It must be >0 for there to be exploration.
+    // 1 is a common default for large trees, but set it higher here to ensure small 
+    // trees don't miss obvious moves
     const c_sub_p: number = 8; 
 
     export const enum States { Paused = 0, Running = 1, Stopped = 2}
@@ -72,24 +72,22 @@ module MCTS {
     }
 
     export function getRecommendedMove(): number {
-        if (simulationState != States.Stopped) {
-            if(rootNode) {
-                return rootNode.board.availableMoves[bestChildIndex(rootNode, 0)]
-            } else {
-                return null;
-            }
+        if(rootNode && rootNode.numChildren > 0) {
+            return rootNode.board.availableMoves[bestChildIndex(rootNode, 0)];
+        } else {
+            return null;
         }
     }
 
     //Tells you what percentage of the maxNodes have been explored.
-    //Indicates 99 instead of 100 if processing is not done (simulationState != States.paused)
-    //The remaining processing in this case is iteratingover the existing tree nodes to update stats
+    //Indicates 99 instead of 100 if nodes explored but (simulationState != States.paused)
+    //The remaining 1 pct is iterating over the existing tree nodes to update stats
     export function getProcessingPct() : number {
         if (simulationState == States.Paused) {
             return 100;
         }
         var pct:number = Math.floor(rootNode.numChildren*100/maxNodes);
-        if (pct == 100) return 99;
+        if (pct >= 99) return 99;
         return pct;
     }
 
@@ -134,7 +132,7 @@ module MCTS {
         }
         //note: simulation state remains paused at end of this function
         //This is done so processing (the execute function) won't interfere with animation
-        //The caller (the UI) will call to resume to continue processing when animation is complete
+        //The caller (the UI) will call resume to continue processing when animation is complete
     }
 
     function incrementNumChildren(firstParent: Node): void {
@@ -162,24 +160,27 @@ module MCTS {
         return curr;//we have reached a terminal state (no moves are available), so this position will be "tested"
     }
 
-    const drawWeight: number = 0.5; //Value between 1 (same as a win) and 0 (same as a loss) of a draw
+
     function bestChildIndex(curr: Node, cp: number): number {
         var currChild: Node;
         var maxIndex: number = 0;
         var maxValue: number = -Infinity;
         var currValue: number; //value indicating importance of visiting this child node
+        var winRate: number;
         for (var index: number = 0; index < curr.child.length; index++) {
-            if (!(currChild = curr.child[index])) break; //change if children can be incomplete or created out of order (not the case now).
-            
-            //note: Javascript makes division by zero = infinity, so the currValue formula below works correctly even if currChild.timesVisited is zero.
-            if (curr.board.gameState == GameStates.Player1sTurn) {
-                currValue = (currChild.numP1Wins + currChild.numDraws * drawWeight) / currChild.timesVisted +  //value from winning
-                            cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);            // + value from being unexplored
-            } else if (curr.board.gameState == GameStates.Player2sTurn) {
-                currValue = (currChild.numP2Wins + currChild.numDraws * drawWeight) / currChild.timesVisted + 
-                            cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted)
-            } 
-                                                          //break ties with a coin flip
+            currChild = curr.child[index];
+            if (!currChild) continue; 
+
+            winRate = currChild.p1winTally / currChild.timesVisted;
+            if (curr.board.gameState == GameStates.Player2sTurn) {
+                winRate = 1 - winRate;
+            }
+
+            //This is the UCT formula for balancing exploitation with exploration
+            //Javascript division by zero = infinity, so formula works even if currChild.timesVisited is zero.
+            currValue = winRate + cp * Math.sqrt(2 * Math.log(curr.timesVisted) / currChild.timesVisted);
+
+            //break ties with a coin flip (not necessary, but avoids always checking same move if there's a tie)
             if ((currValue > maxValue) || (currValue == maxValue && Math.random() < 0.5)) { 
                 maxValue = currValue;
                 maxIndex = index;
@@ -208,11 +209,9 @@ module MCTS {
         var curr: Node = v;
         while (curr) {
             if (endState == GameStates.Player1Wins) {
-                curr.numP1Wins += 1;
-            } else if (endState == GameStates.Player2Wins) {
-                curr.numP2Wins += 1;
+                curr.p1winTally += 1;
             } else if (endState == GameStates.Draw) {
-                curr.numDraws += 1;
+                curr.p1winTally += 0.5;
             }
 
             curr.timesVisted += 1;
@@ -221,9 +220,7 @@ module MCTS {
     }
 
     class Node {
-        numP1Wins: number = 0;
-        numP2Wins: number = 0;
-        numDraws: number = 0;
+        p1winTally: number = 0; //includes p1 wins and 0.5*draws
         timesVisted: number = 0;
         numChildren: number = 0;
         board: Board;
