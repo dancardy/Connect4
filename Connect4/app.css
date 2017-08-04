@@ -1,11 +1,4 @@
-﻿#difficultyLabel.grayed,
-#difficultyValue.grayed,
-#boardWidthLabel.grayed,
-#widthValue.grayed,
-#boardHeightLabel.grayed,
-#heightValue.grayed,
-#connectNumLabel.grayed,
-#connectNumValue.grayed {
+﻿.grayed {
     color: gray;
 }
 

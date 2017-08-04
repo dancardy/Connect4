@@ -33,8 +33,8 @@ module Connect4BoardUI {
     var unprocessedMouseMoveEvent: MouseEvent = null;
     
     //Gameplay controls
-    var AI_Player: number = 1; //0 is first player, 1 is second player.
-    var AI_Player_Max_Wait: number = 10000;
+    var AI_Player: number; //0 is first player, 1 is second player.
+    var AI_Player_Max_Wait: number;
 
     //html Controls
     var newGameBtn: HTMLButtonElement;
@@ -44,7 +44,7 @@ module Connect4BoardUI {
     var textOutputSpan: HTMLSpanElement
     var processingTimeSlider: HTMLInputElement;
     var connectNumSlider: HTMLInputElement;
-
+    var aiPlayerSlider: HTMLInputElement;
 
     export function init(): void {
         newGameBtn = <HTMLButtonElement>document.querySelector("#newGameBtn");
@@ -58,19 +58,22 @@ module Connect4BoardUI {
         canvas.addEventListener('mousemove', processMouseMove);
        
         widthSlider = <HTMLInputElement>document.querySelector("#boardWidth");
-        widthSlider.addEventListener('change', changeBoardWidth);
+        widthSlider.addEventListener('change', function () { processSliderChange(event, "width");} );
 
         heightSlider = <HTMLInputElement>document.querySelector("#boardHeight");
-        heightSlider.addEventListener('change', changeBoardHeight);
+        heightSlider.addEventListener('change', function () { processSliderChange(event, "height");} );
     
         difficultySlider = <HTMLInputElement>document.querySelector("#difficulty");
-        difficultySlider.addEventListener('change', changeDifficulty);
+        difficultySlider.addEventListener('change', function () { processSliderChange(event, "difficulty");} );
 
         processingTimeSlider = <HTMLInputElement>document.querySelector("#processingTime");
         processingTimeSlider.addEventListener('change', changeProcessingTime);
 
         connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
-        connectNumSlider.addEventListener('change', changeConnectNum);
+        connectNumSlider.addEventListener('change', function () { processSliderChange(event, "connectNum");} );
+
+        aiPlayerSlider = <HTMLInputElement>document.querySelector("#aiPlayer");
+        aiPlayerSlider.addEventListener('change', changeAiPlayer);
 
         textOutputSpan = <HTMLSpanElement>document.querySelector("#textOutputSpan");
 
@@ -83,12 +86,24 @@ module Connect4BoardUI {
         initBoard();
     }
 
+    function cleanupInterruptedGame(): void {
+        if (animationRequestID) { //cancel any ongoing animations.
+	        cancelAnimationFrame(animationRequestID);
+            animationRequestID = null;
+        }
+        clearTimeout(animationPlayAIMoveTimeoutHandle); //clear any queued call to playAIMove left over from end of animation sequence
+        clearTimeout(playAIMoveTimeoutHandle); //clear any queued calls to playAIMove that originated from playAIMove itself
+    }
+
 
     function initBoard(): void {
+        cleanupInterruptedGame();
+
         Connect4Board.numRows = parseInt(document.getElementById("heightValue").innerHTML);
         Connect4Board.numCols = parseInt(document.getElementById("widthValue").innerHTML);
         Connect4Board.threshold = parseInt(document.getElementById("connectNumValue").innerHTML);
-        AI_Player = 1;
+        var aiPlayerStr: string = document.getElementById("aiPlayerValue").innerHTML;
+        AI_Player = parseInt(aiPlayerStr.substring(0,1)) -1 ;
         AI_Player_Max_Wait = parseInt(document.getElementById("processingTimeValue").innerHTML)*1000;
         
         var targetDepth: number = getDepthTarget(parseInt(document.getElementById("difficultyValue").innerHTML));
@@ -100,28 +115,32 @@ module Connect4BoardUI {
 
         board = new Connect4Board();
         MCTS.start(board, Connect4Board);
-            
+
         resizeCanvasAccordingToParentSize(Connect4Board.numCols / (Connect4Board.numRows + 1));
         enableControls(true);
+             
+        if (AI_Player == 0) {
+             playAIMove();        
+        }
     }
 
 
     var controlsEnabledNow:boolean = true;
     function enableControls(enable:boolean) :void {
+        //list of controls to change
+        var idList = ["difficultyLabel", "difficultyValue", "boardWidthLabel", "widthValue", "boardHeightLabel",
+            "heightValue", "connectNumLabel", "connectNumValue", "aiPlayerLabel", "aiPlayerValue"];
+        var sliderList = [widthSlider, heightSlider, difficultySlider, connectNumSlider, aiPlayerSlider];
+
         if (enable) {
             if (!controlsEnabledNow) {
-                widthSlider.disabled = false;
-                heightSlider.disabled = false;
-                difficultySlider.disabled = false;
-                connectNumSlider.disabled = false;
-                document.getElementById("difficultyLabel").className = "";
-                document.getElementById("boardWidthLabel").className = "";
-                document.getElementById("boardHeightLabel").className = "";
-                document.getElementById("connectNumLabel").className = "";
-                document.getElementById("difficultyValue").className = "";
-                document.getElementById("widthValue").className = "";
-                document.getElementById("heightValue").className = "";
-                document.getElementById("connectNumValue").className = "";
+                for (var i: number = 0; i < sliderList.length; i++) {
+                    sliderList[i].disabled = false;
+                }
+
+                for (var i: number = 0; i < idList.length; i++) {
+                    document.getElementById(idList[i]).className = "";
+                }
             }
             if ( (board.gameState == GameStates.Player1sTurn) || (board.gameState == GameStates.Player2sTurn) ) {
                 newGameBtn.innerText = "Restore Defaults";
@@ -129,18 +148,13 @@ module Connect4BoardUI {
                 newGameBtn.innerText = "New Game";
             }
         } else if (!enable && controlsEnabledNow) {
-            widthSlider.disabled = true;
-            heightSlider.disabled = true;
-            difficultySlider.disabled = true;
-            connectNumSlider.disabled = true;
-            document.getElementById("difficultyLabel").className += "grayed";
-            document.getElementById("boardWidthLabel").className += "grayed";
-            document.getElementById("boardHeightLabel").className += "grayed";
-            document.getElementById("connectNumLabel").className += "grayed";
-            document.getElementById("difficultyValue").className += "grayed";
-            document.getElementById("widthValue").className += "grayed";
-            document.getElementById("heightValue").className += "grayed";
-            document.getElementById("connectNumValue").className += "grayed";
+            for (var i: number = 0; i < sliderList.length; i++) {
+                sliderList[i].disabled = true;
+            }
+
+            for (var i: number = 0; i < idList.length; i++) {
+                document.getElementById(idList[i]).className += "grayed";
+            }
             newGameBtn.innerText = "New Game";
         }
         controlsEnabledNow = enable;
@@ -163,35 +177,9 @@ module Connect4BoardUI {
         }   
     }
 
-
-    function changeBoardWidth(event: any): void {
+    function processSliderChange(event :any, sliderID:string): void {
         MCTS.stop();
-        var size: any = parseInt(event.target.value);
-        document.getElementById("widthValue").innerHTML = size;
-        initBoard();
-    }
-
-
-    function changeBoardHeight(event: any): void {
-        MCTS.stop();
-        var size: any = parseInt(event.target.value);
-        document.getElementById("heightValue").innerHTML = size;
-        initBoard();
-    }
-
-
-    function changeConnectNum(event: any): void {
-        MCTS.stop();
-        var num: any = parseInt(event.target.value);
-        document.getElementById("connectNumValue").innerHTML = num;
-        initBoard();
-    }
-
-
-    function changeDifficulty(event: any): void {
-        MCTS.stop();
-        var difficultyNum: any = parseInt(event.target.value);
-        document.getElementById("difficultyValue").innerHTML = difficultyNum;
+        document.getElementById(sliderID + "Value").innerHTML = event.target.value;
         initBoard();
     }
 
@@ -206,9 +194,19 @@ module Connect4BoardUI {
         }
     }
 
+    function changeAiPlayer(event: any): void {
+        MCTS.stop();
+        var num: any = parseInt(event.target.value);
+        if (num == 1)
+            document.getElementById("aiPlayerValue").innerHTML = "1st";
+        else 
+            document.getElementById("aiPlayerValue").innerHTML = "2nd";
+        initBoard();
+    }
+
 
     function resetSliderValues() {
-        difficultySlider.value = "5"
+        difficultySlider.value = "5";
         document.getElementById("difficultyValue").innerHTML = difficultySlider.value;
         widthSlider.value = "7";
         document.getElementById("widthValue").innerHTML = widthSlider.value;
@@ -218,6 +216,8 @@ module Connect4BoardUI {
         document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
         connectNumSlider.value = "4";
         document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
+        aiPlayerSlider.value = "2";
+        document.getElementById("aiPlayerValue").innerHTML = "2nd";
     }
 
 
@@ -311,7 +311,9 @@ module Connect4BoardUI {
 
     function makeMove(col: number): void {
         columnOfFallingPiece = col;
-        enableControls(false);
+        if (board.turnsCompleted >= 1) {
+            enableControls(false);
+        }
         MCTS.pauseAndProcessMove(columnOfFallingPiece);
             
         //Begin Animation!
@@ -372,7 +374,8 @@ module Connect4BoardUI {
     }
 
     var thinkingIndicated : boolean = false;
-    var cutofftime : number;
+    var cutofftime: number;
+    var playAIMoveTimeoutHandle: number = null;
     function playAIMove(): void {
         if (MCTS.simulationState == MCTS.States.Running) {
             if (!thinkingIndicated) {
@@ -389,7 +392,7 @@ module Connect4BoardUI {
                 cutofftime = Date.now() + AI_Player_Max_Wait;
             }
             if (Date.now() < cutofftime) {
-                setTimeout(playAIMove, 250);
+                playAIMoveTimeoutHandle = setTimeout(playAIMove, 250);
             } else {
                 thinkingIndicated = false;
                 textOutputSpan.innerHTML = "Max thinking time was reached.  Processing was about " + MCTS.getProcessingPct() + "% done.";
@@ -439,7 +442,7 @@ module Connect4BoardUI {
         }
     }
 
-
+    var animationPlayAIMoveTimeoutHandle: number = null;
     function animateFallingPiece(timestamp: number): void {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         var finalY: number = boardHeight - holeSpacing / 2 - board.colHeight[columnOfFallingPiece] * holeSpacing;
@@ -476,7 +479,7 @@ module Connect4BoardUI {
                 if ((board.gameState == GameStates.Player1sTurn && AI_Player == 0) ||
                     (board.gameState == GameStates.Player2sTurn && AI_Player == 1)) {
                     //it is the AI player's turn
-                    setTimeout(function () { 
+                    animationPlayAIMoveTimeoutHandle = setTimeout(function () { 
                         MCTS.resume(); 
                         playAIMove(); 
                     },5);
