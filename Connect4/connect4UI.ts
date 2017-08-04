@@ -58,19 +58,19 @@ module Connect4BoardUI {
         canvas.addEventListener('mousemove', processMouseMove);
        
         widthSlider = <HTMLInputElement>document.querySelector("#boardWidth");
-        widthSlider.addEventListener('change', function () { processSliderChange(event, "width");} );
+        widthSlider.addEventListener('change', function () { processSliderChange(this, "width");} );
 
         heightSlider = <HTMLInputElement>document.querySelector("#boardHeight");
-        heightSlider.addEventListener('change', function () { processSliderChange(event, "height");} );
+        heightSlider.addEventListener('change', function () { processSliderChange(this, "height");} );
     
         difficultySlider = <HTMLInputElement>document.querySelector("#difficulty");
-        difficultySlider.addEventListener('change', function () { processSliderChange(event, "difficulty");} );
+        difficultySlider.addEventListener('change', function () { processSliderChange(this, "difficulty");} );
 
         processingTimeSlider = <HTMLInputElement>document.querySelector("#processingTime");
         processingTimeSlider.addEventListener('change', changeProcessingTime);
 
         connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
-        connectNumSlider.addEventListener('change', function () { processSliderChange(event, "connectNum");} );
+        connectNumSlider.addEventListener('change', function () { processSliderChange(this, "connectNum");} );
 
         aiPlayerSlider = <HTMLInputElement>document.querySelector("#aiPlayer");
         aiPlayerSlider.addEventListener('change', changeAiPlayer);
@@ -177,9 +177,10 @@ module Connect4BoardUI {
         }   
     }
 
-    function processSliderChange(event :any, sliderID:string): void {
+    function processSliderChange(slider :HTMLInputElement, sliderID:string): void {
+        alert("made it into processSlicerChange");
         MCTS.stop();
-        document.getElementById(sliderID + "Value").innerHTML = event.target.value;
+        document.getElementById(sliderID + "Value").innerHTML = slider.value;
         initBoard();
     }
 
