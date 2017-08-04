@@ -178,7 +178,6 @@ module Connect4BoardUI {
     }
 
     function processSliderChange(slider :HTMLInputElement, sliderID:string): void {
-        alert("made it into processSlicerChange");
         MCTS.stop();
         document.getElementById(sliderID + "Value").innerHTML = slider.value;
         initBoard();
