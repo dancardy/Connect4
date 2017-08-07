@@ -58,19 +58,19 @@ module Connect4BoardUI {
         canvas.addEventListener('mousemove', processMouseMove);
        
         widthSlider = <HTMLInputElement>document.querySelector("#boardWidth");
-        widthSlider.addEventListener('change', function () { processSliderChange(this, "width");} );
+        widthSlider.addEventListener('change', function () { processSliderChange(widthSlider, "width");} );
 
         heightSlider = <HTMLInputElement>document.querySelector("#boardHeight");
-        heightSlider.addEventListener('change', function () { processSliderChange(this, "height");} );
+        heightSlider.addEventListener('change', function () { processSliderChange(heightSlider, "height");} );
     
         difficultySlider = <HTMLInputElement>document.querySelector("#difficulty");
-        difficultySlider.addEventListener('change', function () { processSliderChange(this, "difficulty");} );
+        difficultySlider.addEventListener('change', function () { processSliderChange(difficultySlider, "difficulty");} );
 
         processingTimeSlider = <HTMLInputElement>document.querySelector("#processingTime");
         processingTimeSlider.addEventListener('change', changeProcessingTime);
 
         connectNumSlider = <HTMLInputElement>document.querySelector("#connectNum");
-        connectNumSlider.addEventListener('change', function () { processSliderChange(this, "connectNum");} );
+        connectNumSlider.addEventListener('change', function () { processSliderChange(connectNumSlider, "connectNum");} );
 
         aiPlayerSlider = <HTMLInputElement>document.querySelector("#aiPlayer");
         aiPlayerSlider.addEventListener('change', changeAiPlayer);
@@ -212,7 +212,7 @@ module Connect4BoardUI {
         document.getElementById("widthValue").innerHTML = widthSlider.value;
         heightSlider.value = "6";
         document.getElementById("heightValue").innerHTML = heightSlider.value;
-        processingTimeSlider.value = "10";
+        processingTimeSlider.value = "8";
         document.getElementById("processingTimeValue").innerHTML = processingTimeSlider.value;
         connectNumSlider.value = "4";
         document.getElementById("connectNumValue").innerHTML = connectNumSlider.value;
